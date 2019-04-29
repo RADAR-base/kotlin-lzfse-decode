@@ -21,17 +21,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import java.io.IOException;
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder.LITTLE_ENDIAN
+import java.nio.channels.ReadableByteChannel
+import javax.annotation.ParametersAreNonnullByDefault
+import javax.annotation.WillNotClose
+import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
  * @author Ayesha
  */
-interface BlockDecoder {
+@NotThreadSafe
+internal class RawBlockHeader {
 
-    int read() throws IOException;
+    private val bb = ByteBuffer.allocate(4).order(LITTLE_ENDIAN)
 
-    int read(byte b[], int off, int len) throws IOException;
+    private var nRawBytes: Int = 0
+
+    @Throws(IOException::class)
+    fun load(@WillNotClose ch: ReadableByteChannel): RawBlockHeader {
+        bb.rewind()
+        IO.readFully(ch, bb).flip()
+
+        nRawBytes = bb.int
+
+        return this
+    }
+
+    fun nRawBytes(): Int {
+        return nRawBytes
+    }
+
+    override fun toString(): String {
+        return "RawBlockHeader{nRawBytes=$nRawBytes}"
+    }
 }

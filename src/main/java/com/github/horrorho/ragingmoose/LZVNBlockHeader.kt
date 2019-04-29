@@ -21,16 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import java.nio.channels.ReadableByteChannel;
-import javax.annotation.Nonnull;
-import javax.annotation.ParametersAreNonnullByDefault;
-import javax.annotation.WillNotClose;
-import javax.annotation.concurrent.NotThreadSafe;
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder.LITTLE_ENDIAN
+import java.nio.channels.ReadableByteChannel
+import javax.annotation.ParametersAreNonnullByDefault
+import javax.annotation.WillNotClose
+import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
@@ -38,28 +37,33 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 @ParametersAreNonnullByDefault
-class RawBlockHeader {
+internal class LZVNBlockHeader {
 
-    private final ByteBuffer bb = ByteBuffer.allocate(4).order(LITTLE_ENDIAN);
+    private val bb = ByteBuffer.allocate(8).order(LITTLE_ENDIAN)
 
-    private int nRawBytes;
+    private var nRawBytes: Int = 0
+    private var nPayloadBytes: Int = 0
 
-    @Nonnull
-    RawBlockHeader load(@WillNotClose ReadableByteChannel ch) throws IOException {
-        bb.rewind();
-        IO.readFully(ch, bb).flip();
+    @Throws(IOException::class)
+    fun load(@WillNotClose ch: ReadableByteChannel): LZVNBlockHeader {
+        bb.rewind()
+        IO.readFully(ch, bb).flip()
 
-        nRawBytes = bb.getInt();
+        nRawBytes = bb.int
+        nPayloadBytes = bb.int
 
-        return this;
+        return this
     }
 
-    int nRawBytes() {
-        return nRawBytes;
+    fun nRawBytes(): Int {
+        return nRawBytes
     }
 
-    @Override
-    public String toString() {
-        return "RawBlockHeader{" + "nRawBytes=" + nRawBytes + '}';
+    fun nPayloadBytes(): Int {
+        return nPayloadBytes
+    }
+
+    override fun toString(): String {
+        return "LZVNBlockHeader{nRawBytes=$nRawBytes, nPayloadBytes=$nPayloadBytes}"
     }
 }

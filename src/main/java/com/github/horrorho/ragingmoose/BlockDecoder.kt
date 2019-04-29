@@ -21,28 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import java.io.IOException;
+import java.io.IOException
 
 /**
  *
  * @author Ayesha
  */
-public class LZFSEDecoderException extends IOException {
+internal interface BlockDecoder {
+    @Throws(IOException::class)
+    fun read(): Int
 
-    public LZFSEDecoderException() {
-    }
-
-    public LZFSEDecoderException(String message) {
-        super(message);
-    }
-
-    public LZFSEDecoderException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public LZFSEDecoderException(Throwable cause) {
-        super(cause);
-    }
+    @Throws(IOException::class)
+    fun read(b: ByteArray, off: Int, len: Int): Int
 }

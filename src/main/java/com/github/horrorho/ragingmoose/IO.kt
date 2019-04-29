@@ -21,45 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import javax.annotation.ParametersAreNonnullByDefault;
-import javax.annotation.concurrent.NotThreadSafe;
+import java.io.EOFException
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.ReadableByteChannel
+import javax.annotation.ParametersAreNonnullByDefault
+import javax.annotation.WillNotClose
+import javax.annotation.concurrent.Immutable
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
+@Immutable
 @ParametersAreNonnullByDefault
-class MatchBuffer {
+internal object IO {
 
-    private final byte[] buf;
-    private final int mod;
-    private int p;
-
-    MatchBuffer(int size) {
-        this.mod = size - 1;
-        if ((size & (mod)) != 0) {
-            throw new IllegalArgumentException("size not a power of 2: " + size);
+    @Throws(EOFException::class, IOException::class)
+    fun readFully(@WillNotClose ch: ReadableByteChannel, bb: ByteBuffer): ByteBuffer {
+        while (bb.hasRemaining()) {
+            if (ch.read(bb) == -1) {
+                throw EOFException()
+            }
         }
-        this.buf = new byte[size];
-    }
-
-    void write(byte b) {
-        buf[p] = (byte) b;
-        p++;
-        p &= mod;
-    }
-
-    byte match(int d) {
-        byte b = buf[(p - d) & mod];
-        write(b);
-        return b;
-    }
-
-    @Override
-    public String toString() {
-        return "MatchBuffer{" + "buf.length=" + buf.length + ", mod=" + mod + ", p=" + p + '}';
+        return bb
     }
 }

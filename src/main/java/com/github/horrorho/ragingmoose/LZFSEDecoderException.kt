@@ -21,35 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import javax.annotation.Nonnull;
-import javax.annotation.ParametersAreNonnullByDefault;
-import javax.annotation.WillNotClose;
-import javax.annotation.concurrent.Immutable;
+import java.io.IOException
 
 /**
  *
  * @author Ayesha
  */
-@Immutable
-@ParametersAreNonnullByDefault
-final class IO {
+class LZFSEDecoderException : IOException {
+    constructor()
 
-    @Nonnull
-    static ByteBuffer readFully(@WillNotClose ReadableByteChannel ch, ByteBuffer bb) throws EOFException, IOException {
-        while (bb.hasRemaining()) {
-            if (ch.read(bb) == -1) {
-                throw new EOFException();
-            }
-        }
-        return bb;
-    }
+    constructor(message: String) : super(message)
 
-    private IO() {
-    }
+    constructor(message: String, cause: Throwable) : super(message, cause)
+
+    constructor(cause: Throwable) : super(cause)
 }

@@ -21,16 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose;
+package com.github.horrorho.ragingmoose
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import java.nio.channels.ReadableByteChannel;
-import javax.annotation.Nonnull;
-import javax.annotation.ParametersAreNonnullByDefault;
-import javax.annotation.WillNotClose;
-import javax.annotation.concurrent.NotThreadSafe;
+import javax.annotation.ParametersAreNonnullByDefault
+import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
@@ -38,34 +32,31 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 @ParametersAreNonnullByDefault
-class LZVNBlockHeader {
+internal class MatchBuffer(size: Int) {
 
-    private final ByteBuffer bb = ByteBuffer.allocate(8).order(LITTLE_ENDIAN);
+    private val buf: ByteArray = ByteArray(size)
+    private val mod: Int = size - 1
+    private var p: Int = 0
 
-    private int nRawBytes;
-    private int nPayloadBytes;
-
-    @Nonnull
-    LZVNBlockHeader load(@WillNotClose ReadableByteChannel ch) throws IOException {
-        bb.rewind();
-        IO.readFully(ch, bb).flip();
-
-        nRawBytes = bb.getInt();
-        nPayloadBytes = bb.getInt();
-
-        return this;
+    init {
+        if (size and mod != 0) {
+            throw IllegalArgumentException("size not a power of 2: $size")
+        }
     }
 
-    int nRawBytes() {
-        return nRawBytes;
+    fun write(b: Byte) {
+        buf[p] = b
+        p++
+        p = p and mod
     }
 
-    int nPayloadBytes() {
-        return nPayloadBytes;
+    fun match(d: Int): Byte {
+        val b = buf[p - d and mod]
+        write(b)
+        return b
     }
 
-    @Override
-    public String toString() {
-        return "LZVNBlockHeader{" + "nRawBytes=" + nRawBytes + ", nPayloadBytes=" + nPayloadBytes + '}';
+    override fun toString(): String {
+        return "MatchBuffer{buf.length=${buf.size}, mod=$mod, p=$p}"
     }
 }
