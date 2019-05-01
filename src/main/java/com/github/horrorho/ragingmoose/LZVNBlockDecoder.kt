@@ -78,8 +78,8 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
 
     @Throws(IOException::class)
     fun init(header: LZVNBlockHeader, @WillNotClose ch: ReadableByteChannel): LZVNBlockDecoder {
-        bb = bb.withCapacity(header.nPayloadBytes())
-        IO.readFully(ch, bb).rewind()
+        bb = bb.withCapacity(header.nPayloadBytes)
+        ch.readFully(bb).rewind()
 
         l = 0
         m = 0
@@ -98,11 +98,11 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     }
 
     @Throws(IOException::class)
-    override fun literal(): Byte {
+    override fun readLiteral(): Byte {
         return bb.get()
     }
 
-    override fun literal(b: ByteArray, off: Int, len: Int) {
+    override fun readLiteralBytes(b: ByteArray, off: Int, len: Int) {
         bb.get(b, off, len)
     }
 

@@ -35,52 +35,48 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  */
 @NotThreadSafe
-internal class BitInStream @JvmOverloads constructor(private val `in`: ByteBuffer, private var accum: Long = 0, private var accumNBits: Int = 0) {
+internal class BitInStream constructor(private val `in`: ByteBuffer, bits: Int) {
     // accumNBits 63 bit limit avoids unsupported 64 bit shifts/ branch.
 
-    fun init(n: Int): BitInStream {
+    private var accum: Long
+    private var accumNBits: Int
+
+    init {
         when {
-            n > 0 -> throw LZFSEDecoderException()
-            n == 0 -> {
+            bits > 0 -> throw LZFSEDecoderException()
+            bits == 0 -> {
                 `in`.position(`in`.position() - 7)
-                accum = `in`.getLong(`in`.position() - 1)
-                accum = accum ushr 8
+                accum = `in`.getLong(`in`.position() - 1) ushr 8
                 accumNBits = 56
             }
             else -> {
                 `in`.position(`in`.position() - 8)
                 accum = `in`.getLong(`in`.position())
-                accumNBits = n + 64
+                accumNBits = bits + 64
             }
         }
-        return this
     }
 
-    fun fill(): BitInStream {
+    fun fill() {
         if (accumNBits < 56) {
             val nBits = 63 - accumNBits
             val nBytes = nBits.ushr(3)
             val mBits = (nBits and 0x07) + 1
             `in`.position(`in`.position() - nBytes)
-            accum = `in`.getLong(`in`.position())
-            accum = accum shl mBits
-            accum = accum ushr mBits
+            accum = (`in`.getLong(`in`.position()) shl mBits) ushr mBits
             accumNBits += nBytes shl 3
         }
-        return this
     }
 
-    fun read(n: Int): Long {
+    fun read(n: Int): Int {
         if (n > accumNBits) {
             throw IllegalStateException()
         }
-        if (n < 0) {
-            throw IllegalArgumentException()
-        }
+        assert(n >= 0)
         accumNBits -= n
         val bits = accum.ushr(accumNBits)
         accum = accum xor (bits shl accumNBits)
-        return bits
+        return bits.toInt()
     }
 
     override fun toString(): String {

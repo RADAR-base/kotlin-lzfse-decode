@@ -36,6 +36,10 @@ dependencies {
 tasks.withType<KotlinCompile> {
     kotlinOptions.apiVersion = "1.3"
     kotlinOptions.jvmTarget = "11"
+    kotlinOptions.freeCompilerArgs = listOf(
+            "-Xno-call-assertions",
+            "-Xno-param-assertions"
+    )
 }
 
 tasks.test {

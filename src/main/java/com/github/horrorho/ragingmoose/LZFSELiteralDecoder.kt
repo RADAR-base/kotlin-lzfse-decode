@@ -37,15 +37,17 @@ import javax.annotation.concurrent.NotThreadSafe
 @NotThreadSafe
 internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
         constructor(nStates: Int) {
-
     private val tans: TANS<Entry> = TANS(Array(nStates) { Entry() })
-    private var state: IntArray = intArrayOf(0, 0, 0, 0)
-
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
-    private var nLiteralPayloadBytes: Int = 0
-    private var nLiterals: Int = 0
-    private var literalBits: Int = 0
+    var state: IntArray = intArrayOf(0, 0, 0, 0)
+        set(value) {
+            field = value.copyOf()
+        }
+
+    var nLiteralPayloadBytes: Int = 0
+    var nLiterals: Int = 0
+    var literalBits: Int = 0
 
     @Throws(LZFSEDecoderException::class)
     fun load(weights: ShortArray): LZFSELiteralDecoder {
@@ -53,40 +55,15 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
         return this
     }
 
-    fun state(state: IntArray): LZFSELiteralDecoder {
-        this.state = state.copyOf()
-        return this
-    }
-
-    fun nLiteralPayloadBytes(nLiteralPayloadBytes: Int): LZFSELiteralDecoder {
-        this.nLiteralPayloadBytes = nLiteralPayloadBytes
-        return this
-    }
-
-    fun nLiterals(nLiterals: Int): LZFSELiteralDecoder {
-        this.nLiterals = nLiterals
-        return this
-    }
-
-    fun literalBits(literalBits: Int): LZFSELiteralDecoder {
-        this.literalBits = literalBits
-        return this
-    }
-
     @Throws(IOException::class, LZFSEDecoderException::class)
     fun decodeInto(@WillNotClose ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
         bb = bb.withCapacity(nLiteralPayloadBytes, 8)
-        IO.readFully(ch, bb)
-        val `in` = BitInStream(bb).init(literalBits)
+        ch.readFully(bb)
+        val `in` = BitInStream(bb, literalBits)
 
-        var i = 0
-        while (i < nLiterals) {
+        for (i in 0 until nLiterals step 4) {
             `in`.fill()
-            literals[i + 0] = tans.transition(0, state, `in`).symbol
-            literals[i + 1] = tans.transition(1, state, `in`).symbol
-            literals[i + 2] = tans.transition(2, state, `in`).symbol
-            literals[i + 3] = tans.transition(3, state, `in`).symbol
-            i += 4
+            tans.transition(state, `in`, literals, i)
         }
         return this
     }

@@ -110,7 +110,7 @@ internal class LZFSEBlockHeader {
     @Throws(IOException::class, LZFSEDecoderException::class)
     fun loadV1(@WillNotClose ch: ReadableByteChannel): LZFSEBlockHeader {
         bb.rewind().limit(V1_SIZE)
-        IO.readFully(ch, bb).flip()
+        ch.readFully(bb).flip()
 
         nRawBytes = bb.int
         nPayloadBytes = bb.int
@@ -138,7 +138,7 @@ internal class LZFSEBlockHeader {
     @Throws(IOException::class, LZFSEDecoderException::class)
     fun loadV2(@WillNotClose `in`: ReadableByteChannel): LZFSEBlockHeader {
         bb.rewind().limit(V2_SIZE)
-        IO.readFully(`in`, bb).flip()
+        `in`.readFully(bb).flip()
 
         nRawBytes = bb.int
 
@@ -171,7 +171,7 @@ internal class LZFSEBlockHeader {
             nCompressedPayload > bb.capacity() -> throw LZFSEDecoderException()
             else -> {
                 bb.rewind().limit(nCompressedPayload)
-                IO.readFully(`in`, bb).flip()
+                `in`.readFully(bb).flip()
 
                 initV2Tables(bb, lFreq, mFreq, dFreq, literalFreq)
             }
@@ -248,7 +248,7 @@ internal class LZFSEBlockHeader {
     }
 }
 
-inline fun ShortArray.mapInPlace(transform: (Short) -> Short) {
+inline fun IntArray.mapInPlace(transform: (Int) -> Int) {
     forEachIndexed { i, v ->
         this[i] = transform(v)
     }

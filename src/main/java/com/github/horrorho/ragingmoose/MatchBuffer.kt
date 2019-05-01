@@ -78,14 +78,31 @@ internal class MatchBuffer(size: Int) {
         p = (p + len) and mod
     }
 
-    private tailrec fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
-        val initialLen = min(src.size - srcOff, dest.size - destOff)
+    private inline fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
+        val srcLen = src.size - srcOff
+        val destLen = dest.size - destOff
 
-        if (initialLen >= len) {
-            System.arraycopy(src, srcOff, dest, destOff, len)
-        } else {
-            System.arraycopy(src, srcOff, dest, destOff, initialLen)
-            copyRing(src, srcOff + initialLen, dest, destOff + initialLen, len - initialLen)
+        val initialLen = minOf(srcLen, destLen, len)
+
+        System.arraycopy(src, srcOff, dest, destOff, initialLen)
+
+        when (initialLen) {
+            srcLen -> {
+                if (destLen >= len || destLen == srcLen) {
+                    System.arraycopy(src, 0, dest, destOff + initialLen, len - initialLen)
+                } else  {
+                    System.arraycopy(src, 0, dest, destOff + initialLen, destLen - initialLen)
+                    System.arraycopy(src, destLen - initialLen, dest, 0, len - destLen)
+                }
+            }
+            destLen -> {
+                if (srcLen >= len || srcLen == destLen) {
+                    System.arraycopy(src, srcOff + initialLen, dest, 0, len - initialLen)
+                } else  {
+                    System.arraycopy(src, srcOff + initialLen, dest, 0, srcLen - initialLen)
+                    System.arraycopy(src, 0, dest, srcLen - initialLen, len - srcLen)
+                }
+            }
         }
     }
 

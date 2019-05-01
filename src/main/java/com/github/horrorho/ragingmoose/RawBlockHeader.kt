@@ -45,7 +45,7 @@ internal class RawBlockHeader {
     @Throws(IOException::class)
     fun load(@WillNotClose ch: ReadableByteChannel): RawBlockHeader {
         bb.rewind()
-        IO.readFully(ch, bb).flip()
+        ch.readFully(bb).flip()
 
         nRawBytes = bb.int
 

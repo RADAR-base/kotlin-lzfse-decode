@@ -149,7 +149,7 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
     @Throws(IOException::class)
     internal fun magic(): Int {
         word.rewind()
-        IO.readFully(ch, word).rewind()
+        ch.readFully(word).rewind()
         return word.int
     }
 }

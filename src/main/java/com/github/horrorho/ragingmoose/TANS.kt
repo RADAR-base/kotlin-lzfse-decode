@@ -52,19 +52,22 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
     }
 
     @Suppress("NOTHING_TO_INLINE") // inner-most function does make sense to inline
-    inline fun transition(idx: Int, state: IntArray, `in`: BitInStream): T {
-        return table[state[idx]].also {
-            state[idx] = it.nBase + `in`.read(it.nBits).toInt()
+    inline fun transition(state: IntArray, `in`: BitInStream, literals: ByteArray, literalOff: Int) {
+        state.forEachIndexed { i, v ->
+            val entry = table[v]
+            literals[literalOff + i] = entry.symbol
+            state[i] = entry.nBase + `in`.read(entry.nBits)
         }
     }
 
-    fun transition(state: State, `in`: BitInStream): T {
+    @Suppress("NOTHING_TO_INLINE") // inner-most function does make sense to inline
+    inline fun transition(state: State, `in`: BitInStream): T {
         return table[state.value].also {
-            state.value = it.nBase + `in`.read(it.nBits).toInt()
+            state.value = it.nBase + `in`.read(it.nBits)
         }
     }
 
-    fun foreach(consumer: (Int, T) -> Unit) = table.forEachIndexed(consumer)
+    inline fun foreach(consumer: (T) -> Unit) = table.forEach(consumer)
 
     @Throws(LZFSEDecoderException::class)
     fun init(weights: ShortArray): TANS<T> {

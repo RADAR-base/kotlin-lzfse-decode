@@ -48,7 +48,7 @@ internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDeco
             // Literal
             if (l > 0) {
                 l--
-                val lit = literal()
+                val lit = readLiteral()
                 mb.write(lit)
                 return lit.toInt() and 0xFF
             }
@@ -70,7 +70,7 @@ internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDeco
             // Literals
             val numLiterals = min(endOffset - index, l)
             if (numLiterals > 0) {
-                literal(b, index, numLiterals)
+                readLiteralBytes(b, index, numLiterals)
                 mb.write(b, index, numLiterals)
 
                 index += numLiterals
@@ -90,12 +90,12 @@ internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDeco
     }
 
     @Throws(IOException::class)
-    internal abstract fun literal(): Byte
+    internal abstract fun readLiteral(): Byte
 
     @Throws(IOException::class)
-    internal open fun literal(b: ByteArray, off: Int, len: Int) {
+    internal open fun readLiteralBytes(b: ByteArray, off: Int, len: Int) {
         for (i in off until len) {
-            b[i] = literal()
+            b[i] = readLiteral()
         }
     }
 

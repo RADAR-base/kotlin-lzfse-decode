@@ -37,25 +37,17 @@ internal class LZVNBlockHeader {
     private val bb = BufferUtil.withCapacity(8)
 
     private var nRawBytes: Int = 0
-    private var nPayloadBytes: Int = 0
+    internal var nPayloadBytes: Int = 0
 
     @Throws(IOException::class)
     fun load(@WillNotClose ch: ReadableByteChannel): LZVNBlockHeader {
         bb.rewind()
-        IO.readFully(ch, bb).flip()
+        ch.readFully(bb).flip()
 
         nRawBytes = bb.int
         nPayloadBytes = bb.int
 
         return this
-    }
-
-    fun nRawBytes(): Int {
-        return nRawBytes
-    }
-
-    fun nPayloadBytes(): Int {
-        return nPayloadBytes
     }
 
     override fun toString(): String {

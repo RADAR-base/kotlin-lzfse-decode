@@ -43,7 +43,7 @@ internal class RawBlockDecoder : BlockDecoder {
     @Throws(IOException::class)
     fun init(header: RawBlockHeader, @WillNotClose ch: ReadableByteChannel): RawBlockDecoder {
         bb = bb.withCapacity(header.nRawBytes())
-        IO.readFully(ch, bb).rewind()
+        ch.readFully(bb).rewind()
         return this
     }
 

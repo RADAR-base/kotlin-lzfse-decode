@@ -60,16 +60,16 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
                 .state(bh.mState)
         dValueDecoder.load(bh.dFreq, D_EXTRA_BITS, D_BASE_VALUE)
                 .state(bh.dState)
-        literalDecoder.load(bh.literalFreq)
-                .state(bh.literalState)
-                .nLiteralPayloadBytes(bh.nLiteralPayloadBytes)
-                .nLiterals(bh.nLiterals)
-                .literalBits(bh.literalBits)
-                .decodeInto(ch, literals)
+        literalDecoder.load(bh.literalFreq).apply {
+            state = bh.literalState
+            nLiteralPayloadBytes = bh.nLiteralPayloadBytes
+            nLiterals = bh.nLiterals
+            literalBits = bh.literalBits
+        }.decodeInto(ch, literals)
 
         bb = bb.withCapacity(bh.nLmdPayloadBytes, 32)
-        IO.readFully(ch, bb)
-        `in` = BitInStream(bb).init(bh.lmdBits)
+        ch.readFully(bb)
+        `in` = BitInStream(bb, bh.lmdBits)
 
         rawBytes = bh.nRawBytes
         symbols = bh.nMatches
@@ -80,12 +80,12 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     }
 
     @Throws(IOException::class)
-    override fun literal(): Byte {
+    override fun readLiteral(): Byte {
         return literals[pos++]
     }
 
     @Throws(IOException::class)
-    override fun literal(b: ByteArray, off: Int, len: Int) {
+    override fun readLiteralBytes(b: ByteArray, off: Int, len: Int) {
         System.arraycopy(literals, pos, b, off, len)
         pos += len
     }

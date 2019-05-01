@@ -31,20 +31,11 @@ import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.Immutable
 
-/**
- *
- * @author Ayesha
- */
-@Immutable
-internal object IO {
-
-    @Throws(EOFException::class, IOException::class)
-    fun readFully(@WillNotClose ch: ReadableByteChannel, bb: ByteBuffer): ByteBuffer {
-        while (bb.hasRemaining()) {
-            if (ch.read(bb) == -1) {
-                throw EOFException()
-            }
+internal fun ReadableByteChannel.readFully(bb: ByteBuffer): ByteBuffer {
+    while (bb.hasRemaining()) {
+        if (read(bb) == -1) {
+            throw EOFException()
         }
-        return bb
     }
+    return bb
 }

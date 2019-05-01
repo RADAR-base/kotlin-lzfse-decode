@@ -37,8 +37,7 @@ constructor(nStates: Int) {
 
     @Throws(LZFSEDecoderException::class)
     fun load(weights: ShortArray, symbolVBits: ByteArray, symbolVBase: IntArray): LZFSEValueDecoder {
-        tans.init(weights)
-                .foreach { _, v -> v[symbolVBits] = symbolVBase }
+        tans.init(weights).foreach { v -> v[symbolVBits] = symbolVBase }
         return this
     }
 
@@ -47,10 +46,11 @@ constructor(nStates: Int) {
         return this
     }
 
+    @Suppress("NOTHING_TO_INLINE")
     @Throws(LZFSEDecoderException::class)
-    fun decode(`in`: BitInStream): Int {
+    inline fun decode(`in`: BitInStream): Int {
         return tans.transition(state, `in`).let {
-            it.vBase + `in`.read(it.vBits).toInt()
+            it.vBase + `in`.read(it.vBits)
         }
     }
 
