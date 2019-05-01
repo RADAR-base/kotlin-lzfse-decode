@@ -37,9 +37,7 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
-
     private val tbl = arrayOf<(Int) -> Boolean>(
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::eos, ::lrgD,
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::nop, ::lrgD,
@@ -75,12 +73,12 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
             ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM
     )
 
-    private var bb: ByteBuffer = ByteBuffer.allocate(4096)
+    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
     private var neos = true
 
     @Throws(IOException::class)
     fun init(header: LZVNBlockHeader, @WillNotClose ch: ReadableByteChannel): LZVNBlockDecoder {
-        initBuffer(header.nPayloadBytes())
+        bb = bb.withCapacity(header.nPayloadBytes())
         IO.readFully(ch, bb).rewind()
 
         l = 0
@@ -90,38 +88,22 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         return this
     }
 
-    fun initBuffer(capacity: Int) {
-        if (bb.capacity() < capacity) {
-            bb = ByteBuffer.allocate(capacity).order(LITTLE_ENDIAN)
-        } else {
-            bb.limit(capacity)
-        }
-        bb.position(0)
-    }
-
-    @Throws(IOException::class, LZFSEDecoderException::class)
+    @Throws(IOException::class)
     override fun lmd(): Boolean {
         if (neos) {
-            try {
-                val opc = bb.get().toInt() and 0xFF
-                neos = tbl[opc](opc)
-            } catch (ex: BufferUnderflowException) {
-                throw LZFSEDecoderException(ex)
-            }
-
+            val opc = bb.get().toInt() and 0xFF
+            neos = tbl[opc](opc)
         }
         return neos
     }
 
     @Throws(IOException::class)
     override fun literal(): Byte {
-        try {
-            return bb.get()
+        return bb.get()
+    }
 
-        } catch (ex: BufferUnderflowException) {
-            throw LZFSEDecoderException(ex)
-        }
-
+    override fun literal(b: ByteArray, off: Int, len: Int) {
+        bb.get(b, off, len)
     }
 
     private fun smlL(opc: Int): Boolean {
@@ -180,7 +162,7 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         return true
     }
 
-    private fun eos(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean  = false
+    private fun eos(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean = false
 
     private fun nop(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean = true
 

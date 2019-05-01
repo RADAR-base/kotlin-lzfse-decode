@@ -3,7 +3,15 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     `java-library`
+    application
     kotlin("jvm") version "1.3.31"
+}
+
+val run: JavaExec by tasks
+run.standardInput = System.`in`
+
+application {
+    mainClassName = "com.github.horrorho.ragingmoose.MainKt"
 }
 
 java {

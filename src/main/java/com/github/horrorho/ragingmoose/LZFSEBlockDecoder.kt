@@ -36,7 +36,6 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal class LZFSEBlockDecoder @Throws(LZFSEDecoderException::class)
 constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private val lValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_L_STATES)
@@ -47,7 +46,7 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private val literals = ByteArray(LZFSEConstants.LITERALS_PER_BLOCK + 64)
     private var pos: Int = 0
 
-    private var bb: ByteBuffer = ByteBuffer.allocate(4096)
+    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
     private lateinit var `in`: BitInStream
 
     private var rawBytes: Int = 0
@@ -55,39 +54,40 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
 
     @Throws(LZFSEDecoderException::class, IOException::class)
     fun init(bh: LZFSEBlockHeader, @WillNotClose ch: ReadableByteChannel): LZFSEBlockDecoder {
-        lValueDecoder.load(bh.lFreq(), L_EXTRA_BITS, L_BASE_VALUE)
-                .state(bh.lState())
-        mValueDecoder.load(bh.mFreq(), M_EXTRA_BITS, M_BASE_VALUE)
-                .state(bh.mState())
-        dValueDecoder.load(bh.dFreq(), D_EXTRA_BITS, D_BASE_VALUE)
-                .state(bh.dState())
-        literalDecoder.load(bh.literalFreq())
-                .state(bh.literalState0(), bh.literalState1(), bh.literalState2(), bh.literalState3())
-                .nLiteralPayloadBytes(bh.nLiteralPayloadBytes())
-                .nLiterals(bh.nLiterals())
-                .literalBits(bh.literalBits())
+        lValueDecoder.load(bh.lFreq, L_EXTRA_BITS, L_BASE_VALUE)
+                .state(bh.lState)
+        mValueDecoder.load(bh.mFreq, M_EXTRA_BITS, M_BASE_VALUE)
+                .state(bh.mState)
+        dValueDecoder.load(bh.dFreq, D_EXTRA_BITS, D_BASE_VALUE)
+                .state(bh.dState)
+        literalDecoder.load(bh.literalFreq)
+                .state(bh.literalState)
+                .nLiteralPayloadBytes(bh.nLiteralPayloadBytes)
+                .nLiterals(bh.nLiterals)
+                .literalBits(bh.literalBits)
                 .decodeInto(ch, literals)
 
-        initBuffer(bh.nLmdPayloadBytes())
+        bb = bb.withCapacity(bh.nLmdPayloadBytes, 32)
         IO.readFully(ch, bb)
-        `in` = BitInStream(bb)
-                .init(bh.lmdBits())
+        `in` = BitInStream(bb).init(bh.lmdBits)
 
-        rawBytes = bh.nRawBytes()
-        symbols = bh.nMatches()
+        rawBytes = bh.nRawBytes
+        symbols = bh.nMatches
 
         pos = 0
 
         return this
     }
 
-    fun rawBytes(): Int {
-        return rawBytes
-    }
-
     @Throws(IOException::class)
     override fun literal(): Byte {
         return literals[pos++]
+    }
+
+    @Throws(IOException::class)
+    override fun literal(b: ByteArray, off: Int, len: Int) {
+        System.arraycopy(literals, pos, b, off, len)
+        pos += len
     }
 
     @Throws(LZFSEDecoderException::class)
@@ -104,26 +104,8 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         }
     }
 
-    private fun initBuffer(nLmdPayloadBytes: Int) {
-        val capacity = 32 + nLmdPayloadBytes
-        if (bb.capacity() < capacity) {
-            bb = ByteBuffer.allocate(capacity).order(LITTLE_ENDIAN)
-        } else {
-            bb.limit(capacity)
-        }
-        bb.position(32)
-    }
-
     override fun toString(): String {
-        return ("LZFSEBlockDecoder{"
-                + "lValueDecoder=" + lValueDecoder
-                + ", mValueDecoder=" + mValueDecoder
-                + ", dValueDecoder=" + dValueDecoder
-                + ", literalDecoder=" + literalDecoder
-                + ", literals=.length" + literals.size
-                + ", bb=" + bb
-                + ", in=" + `in`
-                + '}'.toString())
+        return "LZFSEBlockDecoder{lValueDecoder=$lValueDecoder, mValueDecoder=$mValueDecoder, dValueDecoder=$dValueDecoder, literalDecoder=$literalDecoder, literals=.length${literals.size}, bb=$bb, in=$`in`}"
     }
 
     companion object {

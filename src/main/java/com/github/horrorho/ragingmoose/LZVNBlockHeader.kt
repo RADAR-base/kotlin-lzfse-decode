@@ -24,10 +24,7 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -36,10 +33,8 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal class LZVNBlockHeader {
-
-    private val bb = ByteBuffer.allocate(8).order(LITTLE_ENDIAN)
+    private val bb = BufferUtil.withCapacity(8)
 
     private var nRawBytes: Int = 0
     private var nPayloadBytes: Int = 0

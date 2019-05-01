@@ -38,7 +38,7 @@ import javax.annotation.concurrent.NotThreadSafe
 @NotThreadSafe
 internal class RawBlockHeader {
 
-    private val bb = ByteBuffer.allocate(4).order(LITTLE_ENDIAN)
+    private val bb = BufferUtil.withCapacity(4)
 
     private var nRawBytes: Int = 0
 

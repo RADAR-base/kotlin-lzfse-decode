@@ -1,68 +1,67 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.OutputStream
-import java.util.concurrent.ThreadLocalRandom
+import java.lang.IllegalArgumentException
 import kotlin.random.Random
 
 class EncoderGenerator(val cfg: EncoderConfig) {
     // V be in 1..B^W, W > 0,
     // B in 1..256, and C in 0..255.
 
-    fun generate(output: OutputStream) {
+    fun write(output: OutputStream) {
+        generate().forEach { output.write(it) }
+    }
+
+    fun generate(): Sequence<ByteArray> {
         val random = Random.Default
 
-        for (i in 0 until cfg.r) {
+        return generateSequence {
             val vocab = generateVocab(random)
-            generateOutput(vocab, output, random)
-        }
+
+            generateWords(vocab, random).take(cfg.numberOfWords)
+        }.take(cfg.iterations).flatMap { it }
     }
 
-    private fun generateVocab(random: Random): List<ByteArray> {
-        //        for i = 0..V-1 (initialize vocabulary)
-        //      do
-        //        for j = 0..W-1
-        //          dict[i][j] = random(B) + C (mod 256)
-        //      while dict[i] = dict[j] for some j < i
-
-        val vocab = ArrayList<ByteArray>(cfg.v)
-
-        for (i in 0 until cfg.v) {
-            do {
-                val arr = ByteArray(cfg.w)
-                vocab[i] = arr
-                for (j in 0 until cfg.w) {
-                    arr[j] = random.nextInt(0, cfg.b).toByte()
-                }
-            } while (i > 0 && vocab[i] in vocab.subList(0, i))
-        }
-
-        return vocab
+    private fun generateWord(random: Random) = ByteArray(cfg.wordSize).apply {
+        indices.forEach { i -> this[i] = (random.nextInt(0, cfg.characterSize) + cfg.characterOffset).toByte() }
     }
 
-    private fun generateOutput(vocab: List<ByteArray>, output: OutputStream, random: Random) {
+    private fun generateVocab(random: Random) = generateSequence { generateWord(random) }
+            .distinct()
+            .take(cfg.vocabularySize)
+            .toList()
+
+    private fun generateWords(vocab: List<ByteArray>, random: Random): Sequence<ByteArray> {
         var k = 0
-        val buf = ByteArray(cfg.d)
+        val buf = ByteArray(cfg.delay)
 
-        for (i in 0 until cfg.n) {
-            val s = vocab[random.nextInt(0, cfg.v)]
-            if (cfg.d > 0) {
-                for (j in 0 until cfg.w) {
-                    buf[k] = ((buf[k] + s[j]).rem(256)).toByte()
-                    k = (k + 1).rem(cfg.d)
-                    output.write(buf[k].toInt())
-                }
+        return generateSequence {
+            val s = vocab[random.nextInt(0, cfg.vocabularySize)]
+            if (cfg.delay > 0) {
+                s.map { v ->
+                    buf[k] = (buf[k] + v).toByte()
+                    k = (k + 1).rem(cfg.delay)
+                    buf[k]
+                }.toByteArray()
             } else {
-                output.write(s)
+                s
             }
         }
     }
 }
 
 data class EncoderConfig(
-        val r: Int = 1,
-        val n: Int = 1,
-        val w: Int = 1,
-        val b: Int = 256,
-        val c: Int = 0,
-        val v: Int = 1,
-        val d: Int = 0)
+        val iterations: Int = 1,
+        val numberOfWords: Int = 1,
+        val wordSize: Int = 1,
+        val characterSize: Int = 256,
+        val characterOffset: Int = 0,
+        val vocabularySize: Int = 1,
+        val delay: Int = 0) {
+    init {
+        if (iterations < 1) throw IllegalArgumentException("Need to repeat iterations")
+        if (wordSize < 1) throw IllegalArgumentException("Need word size >= 1")
+        if (characterSize > 256 || characterSize < 1) throw IllegalArgumentException("Character size should be 1 <= characterSize <= 256")
+        if (characterOffset > 255 || characterOffset < 0) throw IllegalArgumentException("Character offset should be 0 <= characterSize <= 255")
+    }
+}

@@ -23,17 +23,15 @@
  */
 package com.github.horrorho.ragingmoose
 
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.concurrent.NotThreadSafe
+import kotlin.math.min
 
 /**
  *
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal class MatchBuffer(size: Int) {
-
     private val buf: ByteArray = ByteArray(size)
     private val mod: Int = size - 1
     private var p: Int = 0
@@ -44,16 +42,51 @@ internal class MatchBuffer(size: Int) {
         }
     }
 
-    fun write(b: Byte) {
+    inline fun write(b: Byte) {
         buf[p] = b
-        p++
-        p = p and mod
+        p = (p + 1) and mod
     }
 
-    fun match(d: Int): Byte {
-        val b = buf[p - d and mod]
-        write(b)
+    inline fun write(b: ByteArray, off: Int, len: Int) {
+        val writeLen = min(len, buf.size)
+        val writeOffset = off + len - writeLen
+        p = (p + len - writeLen) and mod
+        copyRing(b, writeOffset, buf, p, writeLen)
+        p = (p + writeLen) and mod
+    }
+
+    inline fun match(d: Int): Byte {
+        val b = buf[(p - d) and mod]
+        buf[p] = b
+        p = (p + 1) and mod
         return b
+    }
+
+    tailrec fun match(d: Int, b: ByteArray, off: Int, len: Int) {
+        if (len <= d) {
+            matchUnsafe(d, b, off, len)
+        } else {
+            matchUnsafe(d, b, off, d)
+            match(d, b, off + d, len - d)
+        }
+    }
+
+    private inline fun matchUnsafe(d: Int, b: ByteArray, off: Int, len: Int) {
+        val srcOff = (p - d) and mod
+        copyRing(buf, srcOff, buf, p, len)
+        copyRing(buf, srcOff, b, off, len)
+        p = (p + len) and mod
+    }
+
+    private tailrec fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
+        val initialLen = min(src.size - srcOff, dest.size - destOff)
+
+        if (initialLen >= len) {
+            System.arraycopy(src, srcOff, dest, destOff, len)
+        } else {
+            System.arraycopy(src, srcOff, dest, destOff, initialLen)
+            copyRing(src, srcOff + initialLen, dest, destOff + initialLen, len - initialLen)
+        }
     }
 
     override fun toString(): String {

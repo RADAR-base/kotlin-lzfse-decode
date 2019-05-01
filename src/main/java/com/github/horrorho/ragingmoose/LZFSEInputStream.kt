@@ -38,17 +38,17 @@ import javax.annotation.concurrent.NotThreadSafe
  */
 @NotThreadSafe
 class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
-    private val word = ByteBuffer.allocate(4).order(LITTLE_ENDIAN)
+    private val word = BufferUtil.withCapacity(4)
 
     private var eos = false
 
-    private var mb: MatchBuffer? = null
-    private var lzfseBlockHeader: LZFSEBlockHeader? = null
-    private var lzvnBlockHeader: LZVNBlockHeader? = null
-    private var rawBlockHeader: RawBlockHeader? = null
-    private var lzfseBlockDecoder: LZFSEBlockDecoder? = null
-    private var lzvnBlockDecoder: LZVNBlockDecoder? = null
-    private var rawBlockDecoder: RawBlockDecoder? = null
+    private val mb: MatchBuffer by lazy { MatchBuffer(LZFSEConstants.MATCH_BUFFER_SIZE) }
+    private val lzfseBlockHeader: LZFSEBlockHeader by lazy { LZFSEBlockHeader() }
+    private val lzvnBlockHeader: LZVNBlockHeader by lazy { LZVNBlockHeader() }
+    private val rawBlockHeader: RawBlockHeader by lazy { RawBlockHeader() }
+    private val lzfseBlockDecoder: LZFSEBlockDecoder by lazy { LZFSEBlockDecoder(mb) }
+    private val lzvnBlockDecoder: LZVNBlockDecoder by lazy { LZVNBlockDecoder(mb) }
+    private val rawBlockDecoder: RawBlockDecoder by lazy { RawBlockDecoder() }
 
     private var decoder: BlockDecoder? = null
 
@@ -74,11 +74,9 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
                 }
             }
             return -1
-
         } catch (ex: RuntimeException) {
-            throw LZFSEDecoderException("internal error", ex)
+            throw LZFSEDecoderException(ex)
         }
-
     }
 
     @Throws(IOException::class)
@@ -102,11 +100,9 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
                 }
             }
             return -1
-
         } catch (ex: RuntimeException) {
-            throw LZFSEDecoderException("internal error", ex)
+            throw LZFSEDecoderException(ex)
         }
-
     }
 
     @Throws(IOException::class)
@@ -123,62 +119,32 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
 
     @Throws(IOException::class, LZFSEDecoderException::class)
     internal fun v1Block() {
-        lzfseBlockHeader()
-                .loadV1(ch)
-        decoder = lzfseBlockDecoder()
-                .init(lzfseBlockHeader!!, ch)
+        lzfseBlockHeader.loadV1(ch)
+        decoder = lzfseBlockDecoder.init(lzfseBlockHeader, ch)
     }
 
     @Throws(IOException::class, LZFSEDecoderException::class)
     internal fun v2Block() {
-        lzfseBlockHeader()
-                .loadV2(ch)
-        decoder = lzfseBlockDecoder()
-                .init(lzfseBlockHeader!!, ch)
+        lzfseBlockHeader.loadV2(ch)
+        decoder = lzfseBlockDecoder.init(lzfseBlockHeader, ch)
     }
 
     @Throws(IOException::class)
     internal fun vnBlock() {
-        lzvnBlockHeader()
-                .load(ch)
-        decoder = lzvnBlockDecoder()
-                .init(lzvnBlockHeader!!, ch)
+        lzvnBlockHeader.load(ch)
+        decoder = lzvnBlockDecoder.init(lzvnBlockHeader, ch)
     }
 
     @Throws(IOException::class)
     internal fun raw() {
-        rawBlockHeader()
-                .load(ch)
-        decoder = rawBlockDecoder()
-                .init(rawBlockHeader!!, ch)
+        rawBlockHeader.load(ch)
+        decoder = rawBlockDecoder.init(rawBlockHeader, ch)
     }
 
     private fun eosBlock() {
         eos = true
         decoder = null
     }
-
-    private fun lzfseBlockHeader(): LZFSEBlockHeader = lzfseBlockHeader
-            ?: LZFSEBlockHeader().also { lzfseBlockHeader = it }
-
-    @Throws(LZFSEDecoderException::class)
-    internal fun lzfseBlockDecoder(): LZFSEBlockDecoder = lzfseBlockDecoder
-            ?: LZFSEBlockDecoder(matchBuffer()).also { lzfseBlockDecoder = it }
-
-    private fun lzvnBlockHeader(): LZVNBlockHeader = lzvnBlockHeader
-            ?: LZVNBlockHeader().also { lzvnBlockHeader = it }
-
-    private fun lzvnBlockDecoder(): LZVNBlockDecoder = lzvnBlockDecoder
-            ?: LZVNBlockDecoder(matchBuffer()).also { lzvnBlockDecoder = it }
-
-    private fun rawBlockHeader(): RawBlockHeader = rawBlockHeader
-            ?: RawBlockHeader().also { rawBlockHeader = it }
-
-    private fun rawBlockDecoder(): RawBlockDecoder = rawBlockDecoder
-            ?: RawBlockDecoder().also { rawBlockDecoder = it }
-
-    private fun matchBuffer(): MatchBuffer = mb
-            ?: MatchBuffer(LZFSEConstants.MATCH_BUFFER_SIZE).also { mb = it }
 
     @Throws(IOException::class)
     internal fun magic(): Int {

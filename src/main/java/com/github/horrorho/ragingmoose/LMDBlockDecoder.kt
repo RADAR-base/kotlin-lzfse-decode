@@ -24,16 +24,14 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
-import java.util.Objects
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.concurrent.NotThreadSafe
+import kotlin.math.min
 
 /**
  *
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDecoder {
     var l: Int = 0
     var m: Int = 0
@@ -46,67 +44,60 @@ internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDeco
 
     @Throws(IOException::class)
     override fun read(): Int {
-        try {
-            do {
-                // Literal
-                if (l > 0) {
-                    l--
-                    val b = literal()
-                    mb.write(b)
-                    return b.toInt() and 0xFF
-                }
-                // Match
-                if (m > 0) {
-                    m--
-                    return mb.match(d).toInt() and 0xFF
-                }
-            } while (lmd())
+        do {
+            // Literal
+            if (l > 0) {
+                l--
+                val lit = literal()
+                mb.write(lit)
+                return lit.toInt() and 0xFF
+            }
+            // Match
+            if (m > 0) {
+                m--
+                return mb.match(d).toInt() and 0xFF
+            }
+        } while (lmd())
 
-            return -1
-
-        } catch (ex: IllegalArgumentException) {
-            throw LZFSEDecoderException(ex)
-        }
-
+        return -1
     }
 
     @Throws(IOException::class)
     override fun read(b: ByteArray, off: Int, len: Int): Int {
-        try {
-            val to = off + len
-            var o = off
-            do {
-                // Literals
-                val ls = Math.min(to - o, l)
-                run {
-                    val n = o + ls
-                    while (o < n) {
-                        val _b = literal()
-                        mb.write(_b)
-                        b[o] = _b
-                        o++
-                    }
-                }
-                l -= ls
-                // Matches
-                val ms = Math.min(to - o, m)
-                val n = o + ms
-                while (o < n) {
-                    b[o] = mb.match(d)
-                    o++
-                }
-                m -= ms
-            } while (to - o > 0 && lmd())
+        val endOffset = off + len
+        var index = off
+        do {
+            // Literals
+            val numLiterals = min(endOffset - index, l)
+            if (numLiterals > 0) {
+                literal(b, index, numLiterals)
+                mb.write(b, index, numLiterals)
 
-            return o - off
-        } catch (ex: IllegalArgumentException) {
-            throw LZFSEDecoderException(ex)
-        }
+                index += numLiterals
+                l -= numLiterals
+            }
 
+            // Matches
+            val numMatches = min(endOffset - index, m)
+            if (numMatches > 0) {
+                mb.match(d, b, index, numMatches)
+                index += numMatches
+                m -= numMatches
+            }
+        } while (index < endOffset && lmd())
+
+        return index - off
     }
 
     @Throws(IOException::class)
     internal abstract fun literal(): Byte
+
+    @Throws(IOException::class)
+    internal open fun literal(b: ByteArray, off: Int, len: Int) {
+        for (i in off until len) {
+            b[i] = literal()
+        }
+    }
 
     @Throws(IOException::class)
     internal abstract fun lmd(): Boolean

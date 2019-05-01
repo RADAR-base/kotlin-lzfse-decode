@@ -24,6 +24,8 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  *
@@ -35,4 +37,19 @@ internal interface BlockDecoder {
 
     @Throws(IOException::class)
     fun read(b: ByteArray, off: Int, len: Int): Int
+}
+
+object BufferUtil {
+    fun withCapacity(capacity: Int): ByteBuffer {
+        return ByteBuffer.allocate(capacity).order(ByteOrder.LITTLE_ENDIAN)
+    }
+}
+
+fun ByteBuffer.withCapacity(capacity: Int, atPosition: Int = 0): ByteBuffer {
+    val totalCapacity = capacity + atPosition
+    return if (capacity() < totalCapacity) {
+        BufferUtil.withCapacity(totalCapacity)
+    } else {
+        limit(totalCapacity)
+    }.position(atPosition)
 }

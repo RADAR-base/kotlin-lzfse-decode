@@ -26,10 +26,7 @@ package com.github.horrorho.ragingmoose
 import com.github.horrorho.ragingmoose.TANS.Entry
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import java.util.function.Supplier
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -41,13 +38,10 @@ import javax.annotation.concurrent.NotThreadSafe
 internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
         constructor(nStates: Int) {
 
-    private val tans: TANS<Entry> = TANS(nStates, ::Entry, ::arrayOfNulls)
-    private val state0: TANS.State = TANS.State()
-    private val state1: TANS.State = TANS.State()
-    private val state2: TANS.State = TANS.State()
-    private val state3: TANS.State = TANS.State()
+    private val tans: TANS<Entry> = TANS(Array(nStates) { Entry() })
+    private var state: IntArray = intArrayOf(0, 0, 0, 0)
 
-    private var bb: ByteBuffer = ByteBuffer.wrap(ByteArray(0))
+    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
     private var nLiteralPayloadBytes: Int = 0
     private var nLiterals: Int = 0
@@ -59,11 +53,8 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
         return this
     }
 
-    fun state(state0: Int, state1: Int, state2: Int, state3: Int): LZFSELiteralDecoder {
-        this.state0.value = state0
-        this.state1.value = state1
-        this.state2.value = state2
-        this.state3.value = state3
+    fun state(state: IntArray): LZFSELiteralDecoder {
+        this.state = state.copyOf()
         return this
     }
 
@@ -84,34 +75,23 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
 
     @Throws(IOException::class, LZFSEDecoderException::class)
     fun decodeInto(@WillNotClose ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
-        initBuffer()
+        bb = bb.withCapacity(nLiteralPayloadBytes, 8)
         IO.readFully(ch, bb)
-        val `in` = BitInStream(bb)
-                .init(literalBits)
+        val `in` = BitInStream(bb).init(literalBits)
 
         var i = 0
         while (i < nLiterals) {
             `in`.fill()
-            literals[i + 0] = tans.transition(state0, `in`).symbol
-            literals[i + 1] = tans.transition(state1, `in`).symbol
-            literals[i + 2] = tans.transition(state2, `in`).symbol
-            literals[i + 3] = tans.transition(state3, `in`).symbol
+            literals[i + 0] = tans.transition(0, state, `in`).symbol
+            literals[i + 1] = tans.transition(1, state, `in`).symbol
+            literals[i + 2] = tans.transition(2, state, `in`).symbol
+            literals[i + 3] = tans.transition(3, state, `in`).symbol
             i += 4
         }
         return this
     }
 
-    private fun initBuffer() {
-        val capacity = 8 + nLiteralPayloadBytes
-        if (bb.capacity() < capacity) {
-            bb = ByteBuffer.allocate(capacity).order(LITTLE_ENDIAN)
-        } else {
-            bb.limit(capacity)
-        }
-        bb.position(8)
-    }
-
     override fun toString(): String {
-        return ("LZFSELiteralDecoder{tans=$tans, state0=$state0, state1=$state1, state2=$state2, state3=$state3, nLiteralPayloadBytes=$nLiteralPayloadBytes, nLiterals=$nLiterals, literalBits=$literalBits}")
+        return ("LZFSELiteralDecoder{tans=$tans, state=$state, nLiteralPayloadBytes=$nLiteralPayloadBytes, nLiterals=$nLiterals, literalBits=$literalBits}")
     }
 }

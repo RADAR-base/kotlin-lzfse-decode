@@ -38,26 +38,18 @@ import javax.annotation.concurrent.NotThreadSafe
  */
 @NotThreadSafe
 internal class RawBlockDecoder : BlockDecoder {
-    private var bb: ByteBuffer = ByteBuffer.allocate(4096)
+    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
     @Throws(IOException::class)
     fun init(header: RawBlockHeader, @WillNotClose ch: ReadableByteChannel): RawBlockDecoder {
-        initBuffer(header.nRawBytes())
+        bb = bb.withCapacity(header.nRawBytes())
         IO.readFully(ch, bb).rewind()
         return this
     }
 
     @Throws(IOException::class)
     override fun read(): Int {
-        try {
-            return if (bb.hasRemaining())
-                bb.get().toInt() and 0xFF
-            else
-                -1
-        } catch (ex: BufferUnderflowException) {
-            throw LZFSEDecoderException(ex)
-        }
-
+        return if (bb.hasRemaining()) bb.get().toInt() and 0xFF else -1
     }
 
     @Throws(IOException::class)
@@ -65,14 +57,5 @@ internal class RawBlockDecoder : BlockDecoder {
         val available = Math.min(bb.remaining(), len)
         bb.get(b, off, available)
         return available
-    }
-
-    fun initBuffer(capacity: Int) {
-        if (bb.capacity() < capacity) {
-            bb = ByteBuffer.allocate(capacity).order(LITTLE_ENDIAN)
-        } else {
-            bb.limit(capacity)
-        }
-        bb.position(0)
     }
 }

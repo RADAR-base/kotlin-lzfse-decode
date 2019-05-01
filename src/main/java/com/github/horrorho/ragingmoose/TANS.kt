@@ -23,8 +23,6 @@
  */
 package com.github.horrorho.ragingmoose
 
-import java.util.stream.IntStream
-import java.util.stream.Stream
 import javax.annotation.concurrent.NotThreadSafe
 
 /**
@@ -53,8 +51,12 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
         }
     }
 
-    @Throws(LZFSEDecoderException::class)
-    constructor(n: Int, cons: () -> T, generator: (Int) -> Array<T?>) : this(table<T>(n, cons, generator))
+    @Suppress("NOTHING_TO_INLINE") // inner-most function does make sense to inline
+    inline fun transition(idx: Int, state: IntArray, `in`: BitInStream): T {
+        return table[state[idx]].also {
+            state[idx] = it.nBase + `in`.read(it.nBits).toInt()
+        }
+    }
 
     fun transition(state: State, `in`: BitInStream): T {
         return table[state.value].also {
@@ -62,10 +64,7 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
         }
     }
 
-    fun foreach(consumer: (Int, T) -> Unit) {
-        IntStream.range(0, table.size)
-                .forEachOrdered { i -> consumer(i, table[i]) }
-    }
+    fun foreach(consumer: (Int, T) -> Unit) = table.forEachIndexed(consumer)
 
     @Throws(LZFSEDecoderException::class)
     fun init(weights: ShortArray): TANS<T> {
@@ -73,20 +72,17 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
             throw LZFSEDecoderException()
         }
         try {
-            var i = 0
             var t = 0
-            while (i < weights.size) {
-                t = fill(i.toByte(), weights[i].toInt(), t)
-                i++
+            weights.forEachIndexed { i, weight ->
+                t = fill(i.toByte(), weight.toInt(), t)
             }
             return this
         } catch (ex: ArrayIndexOutOfBoundsException) {
             throw LZFSEDecoderException(ex)
         }
-
     }
 
-    fun fill(s: Byte, w: Int, initialT: Int): Int {
+    private fun fill(s: Byte, w: Int, initialT: Int): Int {
         var t = initialT
         val k = Integer.numberOfLeadingZeros(w) - nZero
         val x = (table.size shl 1).ushr(k) - w
@@ -106,17 +102,5 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
 
     override fun toString(): String {
         return "TANS{table.length=${table.size}}"
-    }
-
-    companion object {
-        @Throws(LZFSEDecoderException::class)
-        fun <T> table(n: Int, cons: () -> T, generator: (Int) -> Array<T?>): Array<T> {
-            if (n < 0) {
-                throw LZFSEDecoderException()
-            }
-            return Stream.generate(cons)
-                    .limit(n.toLong())
-                    .toArray(generator) as Array<T>
-        }
     }
 }

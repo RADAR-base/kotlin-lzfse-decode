@@ -23,7 +23,6 @@
  */
 package com.github.horrorho.ragingmoose
 
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.concurrent.NotThreadSafe
 
 /**
@@ -31,10 +30,9 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  */
 @NotThreadSafe
-@ParametersAreNonnullByDefault
 internal class LZFSEValueDecoder @Throws(LZFSEDecoderException::class)
 constructor(nStates: Int) {
-    private val tans: TANS<Entry> = TANS(nStates, ::Entry, ::arrayOfNulls)
+    private val tans: TANS<ValueEntry> = TANS(Array(nStates) { ValueEntry() })
     private val state: TANS.State = TANS.State()
 
     @Throws(LZFSEDecoderException::class)
@@ -61,11 +59,11 @@ constructor(nStates: Int) {
     }
 
     @NotThreadSafe
-    internal class Entry : TANS.Entry() {
+    internal class ValueEntry : TANS.Entry() {
         var vBits: Int = 0
         var vBase: Int = 0
 
-        operator fun set(symbolVBits: ByteArray, symbolVBase: IntArray): Entry {
+        operator fun set(symbolVBits: ByteArray, symbolVBase: IntArray): ValueEntry {
             val s = symbol.toInt() and 0xFF
             this.vBase = symbolVBase[s]
             this.vBits = symbolVBits[s].toInt()

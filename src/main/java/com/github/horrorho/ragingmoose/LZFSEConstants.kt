@@ -45,6 +45,7 @@ internal object LZFSEConstants {
     const val ENCODE_M_SYMBOLS = 20
     const val ENCODE_D_SYMBOLS = 64
     const val ENCODE_LITERAL_SYMBOLS = 256
+
     const val ENCODE_SYMBOLS = ENCODE_L_SYMBOLS + ENCODE_M_SYMBOLS + ENCODE_D_SYMBOLS + ENCODE_LITERAL_SYMBOLS
 
     const val ENCODE_L_STATES = 64
@@ -59,5 +60,5 @@ internal object LZFSEConstants {
     const val ENCODE_MAX_M_VALUE = 2359
     const val ENCODE_MAX_D_VALUE = 262139
 
-    const val MATCH_BUFFER_SIZE = 262144
+    const val MATCH_BUFFER_SIZE = 262144  // must be factor 2
 }
