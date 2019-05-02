@@ -24,62 +24,73 @@
 package com.github.horrorho.ragingmoose
 
 import java.lang.Long.toHexString
+import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.util.Objects
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.concurrent.NotThreadSafe
 
+
 /**
- * Low level bit in stream.
+ * Low level bit bb stream.
  *
  * @author Ayesha
  */
 @NotThreadSafe
-internal class BitInStream constructor(private val `in`: ByteBuffer, bits: Int) {
-    // accumNBits 63 bit limit avoids unsupported 64 bit shifts/ branch.
+internal class BitInStream {
+    // bitCacheSize 63 bit limit avoids unsupported 64 bit shifts/ branch.
+    private var bitCache: Long = 0
+    private var bitCacheSize: Int = 0
+    private lateinit var bb: ByteBuffer
 
-    private var accum: Long
-    private var accumNBits: Int
-
-    init {
+    fun init(bb: ByteBuffer, bits: Int) {
+        this.bb = bb
         when {
             bits > 0 -> throw LZFSEDecoderException()
             bits == 0 -> {
-                `in`.position(`in`.position() - 7)
-                accum = `in`.getLong(`in`.position() - 1) ushr 8
-                accumNBits = 56
+                bb.position(bb.position() - 7)
+                bitCache = bb.getLong(bb.position() - 1) ushr 8
+                bitCacheSize = 56
             }
             else -> {
-                `in`.position(`in`.position() - 8)
-                accum = `in`.getLong(`in`.position())
-                accumNBits = bits + 64
+                bb.position(bb.position() - 8)
+                bitCache = bb.getLong(bb.position())
+                bitCacheSize = bits + 64
             }
         }
     }
 
     fun fill() {
-        if (accumNBits < 56) {
-            val nBits = 63 - accumNBits
+        if (bitCacheSize < 56) {
+            val nBits = MAXIMUM_CACHE_SIZE - bitCacheSize
             val nBytes = nBits.ushr(3)
-            val mBits = (nBits and 0x07) + 1
-            `in`.position(`in`.position() - nBytes)
-            accum = (`in`.getLong(`in`.position()) shl mBits) ushr mBits
-            accumNBits += nBytes shl 3
+
+            val pos = bb.position() - nBytes
+            bb.position(pos)
+            bitCache = bb.getLong(pos)
+            bitCacheSize += nBytes shl 3
         }
     }
 
     fun read(n: Int): Int {
-        if (n > accumNBits) {
-            throw IllegalStateException()
-        }
         assert(n >= 0)
-        accumNBits -= n
-        val bits = accum.ushr(accumNBits)
-        accum = accum xor (bits shl accumNBits)
-        return bits.toInt()
+        if (bitCacheSize < n) {
+            throw BufferUnderflowException()
+        }
+        bitCacheSize -= n
+        return (bitCache shr bitCacheSize).toInt() and MASKS[n]
     }
 
     override fun toString(): String {
-        return "BitStream{in=$`in`, accum=0x${toHexString(accum)}, accumNBits=$accumNBits}"
+        return "BitStream{bb=$bb, bitCache=0x${toHexString(bitCache)}, bitCacheSize=$bitCacheSize}"
+    }
+
+    companion object {
+        private const val MAXIMUM_CACHE_SIZE = 63 // bits bb long minus sign bit
+        private val MASKS = IntArray(32)
+
+        init {
+            for (i in 1 until MASKS.size) {
+                MASKS[i] = (MASKS[i - 1] shl 1) + 1
+            }
+        }
     }
 }

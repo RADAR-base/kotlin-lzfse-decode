@@ -24,11 +24,8 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
-import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 

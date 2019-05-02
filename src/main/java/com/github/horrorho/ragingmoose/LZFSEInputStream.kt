@@ -26,8 +26,6 @@ package com.github.horrorho.ragingmoose
 import java.io.IOException
 import java.io.InputStream
 import java.lang.Integer.toHexString
-import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.Channels
 import java.nio.channels.ReadableByteChannel
 import javax.annotation.concurrent.NotThreadSafe

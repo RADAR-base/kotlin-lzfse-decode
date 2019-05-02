@@ -42,12 +42,12 @@ internal class MatchBuffer(size: Int) {
         }
     }
 
-    inline fun write(b: Byte) {
+    fun write(b: Byte) {
         buf[p] = b
         p = (p + 1) and mod
     }
 
-    inline fun write(b: ByteArray, off: Int, len: Int) {
+    fun write(b: ByteArray, off: Int, len: Int) {
         val writeLen = min(len, buf.size)
         val writeOffset = off + len - writeLen
         p = (p + len - writeLen) and mod
@@ -55,7 +55,7 @@ internal class MatchBuffer(size: Int) {
         p = (p + writeLen) and mod
     }
 
-    inline fun match(d: Int): Byte {
+    fun match(d: Int): Byte {
         val b = buf[(p - d) and mod]
         buf[p] = b
         p = (p + 1) and mod
@@ -71,14 +71,14 @@ internal class MatchBuffer(size: Int) {
         }
     }
 
-    private inline fun matchUnsafe(d: Int, b: ByteArray, off: Int, len: Int) {
+    private fun matchUnsafe(d: Int, b: ByteArray, off: Int, len: Int) {
         val srcOff = (p - d) and mod
         copyRing(buf, srcOff, buf, p, len)
         copyRing(buf, srcOff, b, off, len)
         p = (p + len) and mod
     }
 
-    private inline fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
+    private fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
         val srcLen = src.size - srcOff
         val destLen = dest.size - destOff
 
@@ -87,6 +87,7 @@ internal class MatchBuffer(size: Int) {
         System.arraycopy(src, srcOff, dest, destOff, initialLen)
 
         when (initialLen) {
+            len -> return
             srcLen -> {
                 if (destLen >= len || destLen == srcLen) {
                     System.arraycopy(src, 0, dest, destOff + initialLen, len - initialLen)

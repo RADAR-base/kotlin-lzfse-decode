@@ -24,11 +24,8 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
-import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -38,7 +35,7 @@ import javax.annotation.concurrent.NotThreadSafe
  */
 @NotThreadSafe
 internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
-    private val tbl = arrayOf<(Int) -> Boolean>(
+    private val tbl: Array<() -> Unit> = arrayOf(
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::eos, ::lrgD,
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::nop, ::lrgD,
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::nop, ::lrgD,
@@ -70,8 +67,9 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
             ::lrgL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL,
             ::smlL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL, ::smlL,
             ::lrgM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM,
-            ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM
-    )
+            ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM, ::smlM)
+            .mapIndexed { i, f -> f(i) }
+            .toTypedArray()
 
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
     private var neos = true
@@ -91,8 +89,9 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     @Throws(IOException::class)
     override fun lmd(): Boolean {
         if (neos) {
-            val opc = bb.get().toInt() and 0xFF
-            neos = tbl[opc](opc)
+            val opc = bb.getUByte()
+            tbl[opc]()
+            neos = opc != 6
         }
         return neos
     }
@@ -106,66 +105,81 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         bb.get(b, off, len)
     }
 
-    private fun smlL(opc: Int): Boolean {
-        // 1110LLLL LITERAL
-        l = opc and 0x0F
-        return true
+    private fun smlL(opc: Int): (() -> Unit) {
+        val newL = opc and 0x0F
+        return {
+            // 1110LLLL LITERAL
+            l = newL
+        }
     }
 
-    private fun lrgL(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean {
-        // 11100000 LLLLLLLL LITERAL
-        l = (bb.get().toInt() and 0xFF) + 16
-        return true
+    private fun lrgL(opc: Int): (() -> Unit) = {
+        l = bb.getUByte() + 16
     }
 
-    private fun smlM(opc: Int): Boolean {
-        // 1111MMMM
-        m = opc and 0xF
-        return true
+    private fun smlM(opc: Int): (() -> Unit) {
+        val newM = opc and 0xF
+        return {
+            // 1111MMMM
+            m = newM
+        }
     }
 
-    private fun lrgM(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean {
+    private fun lrgM(opc: Int): (() -> Unit) = {
         // 11110000 MMMMMMMM
-        m = (bb.get().toInt() and 0xFF) + 16
-        return true
+        m = bb.getUByte() + 16
+
     }
 
-    private fun preD(opc: Int): Boolean {
-        // LLMMM110
-        l = opc.ushr(6) and 0x03
-        m = (opc.ushr(3) and 0x07) + 3
-        return true
+    private fun preD(opc: Int): (() -> Unit) {
+        val newL = opc.ushr(6) and 0x03
+        val newM = (opc.ushr(3) and 0x07) + 3
+        return {
+            // LLMMM110
+            l = newL
+            m = newM
+        }
     }
 
-    private fun smlD(opc: Int): Boolean {
-        // LLMMMDDD DDDDDDDD LITERAL
-        l = opc.ushr(6) and 0x03
-        m = (opc.ushr(3) and 0x07) + 3
-        d = opc and 0x07 shl 8 or (bb.get().toInt() and 0xFF)
-        return true
+    private fun smlD(opc: Int): (() -> Unit) {
+        val newL = opc.ushr(6) and 0x03
+        val newM = (opc.ushr(3) and 0x07) + 3
+        val newD = opc and 0x07 shl 8
+        return {
+            // LLMMMDDD DDDDDDDD LITERAL
+            l = newL
+            m = newM
+            d = newD or bb.getUByte()
+        }
     }
 
-    private fun medD(opc: Int): Boolean {
-        // 101LLMMM DDDDDDMM DDDDDDDD LITERAL
-        val s = bb.short.toInt()
-        l = opc.ushr(3) and 0x03
-        m = (opc and 0x7 shl 2 or (s and 0x03)) + 3
-        d = s.ushr(2)
-        return true
+    private fun medD(opc: Int): (() -> Unit) {
+        val newL = opc.ushr(3) and 0x03
+        val newM = opc and 0x7 shl 2
+        return {
+            // 101LLMMM DDDDDDMM DDDDDDDD LITERAL
+            val s = bb.short.toInt()
+            l = newL
+            m = (newM or (s and 0x03)) + 3
+            d = s.ushr(2)
+        }
     }
 
-    private fun lrgD(opc: Int): Boolean {
-        // LLMMM111 DDDDDDDD DDDDDDDD LITERAL
-        l = opc.ushr(6) and 0x03
-        m = (opc.ushr(3) and 0x07) + 3
-        d = bb.short.toInt() and 0xFFFF
-        return true
+    private fun lrgD(opc: Int): (() -> Unit) {
+        val newL = opc.ushr(6) and 0x03
+        val newM = (opc.ushr(3) and 0x07) + 3
+        return {
+            // LLMMM111 DDDDDDDD DDDDDDDD LITERAL
+            l = newL
+            m = newM
+            d = bb.getUShort()
+        }
     }
 
-    private fun eos(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean = false
-
-    private fun nop(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean = true
-
-    @Throws(LZFSEDecoderException::class)
-    fun udef(@Suppress("UNUSED_PARAMETER") opc: Int): Boolean = throw LZFSEDecoderException()
+    private fun nop(opc: Int): (() -> Unit) = {}
+    private fun eos(opc: Int): (() -> Unit) = nop(opc)
+    private fun udef(opc: Int): () -> Unit = { throw LZFSEDecoderException() }
 }
+
+fun ByteBuffer.getUByte(): Int = get().toInt() and 0xFF
+fun ByteBuffer.getUShort(): Int = short.toInt() and 0xFFFF

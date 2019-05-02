@@ -23,7 +23,6 @@
  */
 package com.github.horrorho.ragingmoose
 
-import com.github.horrorho.ragingmoose.TANS.Entry
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
@@ -37,7 +36,7 @@ import javax.annotation.concurrent.NotThreadSafe
 @NotThreadSafe
 internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
         constructor(nStates: Int) {
-    private val tans: TANS<Entry> = TANS(Array(nStates) { Entry() })
+    private val tans: TANS<TANS.Entry> = TANS(Array(nStates) { TANS.Entry() })
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
     var state: IntArray = intArrayOf(0, 0, 0, 0)
@@ -48,6 +47,7 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
     var nLiteralPayloadBytes: Int = 0
     var nLiterals: Int = 0
     var literalBits: Int = 0
+    private val bitInStream = BitInStream()
 
     @Throws(LZFSEDecoderException::class)
     fun load(weights: ShortArray): LZFSELiteralDecoder {
@@ -59,11 +59,13 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
     fun decodeInto(@WillNotClose ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
         bb = bb.withCapacity(nLiteralPayloadBytes, 8)
         ch.readFully(bb)
-        val `in` = BitInStream(bb, literalBits)
+        bitInStream.init(bb, literalBits)
 
-        for (i in 0 until nLiterals step 4) {
-            `in`.fill()
-            tans.transition(state, `in`, literals, i)
+        var i = 0
+        while (i < nLiterals) {
+            bitInStream.fill()
+            tans.transition(state, bitInStream, literals, i)
+            i += 4
         }
         return this
     }

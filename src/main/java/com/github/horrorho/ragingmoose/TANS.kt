@@ -37,6 +37,8 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
 
     @NotThreadSafe
     internal open class Entry {
+        fun readData(bitIn: BitInStream) = nBase + bitIn.read(nBits)
+
         var nBits: Int = 0
         var nBase: Int = 0
         var symbol: Byte = 0
@@ -51,19 +53,19 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
         }
     }
 
-    @Suppress("NOTHING_TO_INLINE") // inner-most function does make sense to inline
-    inline fun transition(state: IntArray, `in`: BitInStream, literals: ByteArray, literalOff: Int) {
-        state.forEachIndexed { i, v ->
-            val entry = table[v]
+    fun transition(state: IntArray, `in`: BitInStream, literals: ByteArray, literalOff: Int) {
+        var i = 0
+        while (i < 4) {
+            val entry = table[state[i]]
             literals[literalOff + i] = entry.symbol
-            state[i] = entry.nBase + `in`.read(entry.nBits)
+            state[i] = entry.readData(`in`)
+            i++
         }
     }
 
-    @Suppress("NOTHING_TO_INLINE") // inner-most function does make sense to inline
-    inline fun transition(state: State, `in`: BitInStream): T {
+    fun transition(state: State, `in`: BitInStream): T {
         return table[state.value].also {
-            state.value = it.nBase + `in`.read(it.nBits)
+            state.value = it.readData(`in`)
         }
     }
 
@@ -89,7 +91,8 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
         var t = initialT
         val k = Integer.numberOfLeadingZeros(w) - nZero
         val x = (table.size shl 1).ushr(k) - w
-        for (i in 0 until w) {
+        var i = 0
+        while (i < w) {
             val e = table[t++]
             e.symbol = s
             if (i < x) {
@@ -99,6 +102,7 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
                 e.nBits = k - 1
                 e.nBase = i - x shl k - 1
             }
+            i++
         }
         return t
     }

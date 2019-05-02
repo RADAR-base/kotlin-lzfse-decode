@@ -46,12 +46,9 @@ constructor(nStates: Int) {
         return this
     }
 
-    @Suppress("NOTHING_TO_INLINE")
     @Throws(LZFSEDecoderException::class)
-    inline fun decode(`in`: BitInStream): Int {
-        return tans.transition(state, `in`).let {
-            it.vBase + `in`.read(it.vBits)
-        }
+    fun decode(`in`: BitInStream): Int {
+        return tans.transition(state, `in`).readVData(`in`)
     }
 
     override fun toString(): String {
@@ -62,6 +59,8 @@ constructor(nStates: Int) {
     internal class ValueEntry : TANS.Entry() {
         var vBits: Int = 0
         var vBase: Int = 0
+
+        fun readVData(bitIn: BitInStream) = vBase + bitIn.read(vBits)
 
         operator fun set(symbolVBits: ByteArray, symbolVBase: IntArray): ValueEntry {
             val s = symbol.toInt() and 0xFF

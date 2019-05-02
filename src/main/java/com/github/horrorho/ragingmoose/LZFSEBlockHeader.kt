@@ -24,11 +24,8 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.IOException
-import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -196,33 +193,39 @@ internal class LZFSEBlockHeader {
 
         @Throws(LZFSEDecoderException::class)
         fun initV2Tables(bb: ByteBuffer, vararg tables: ShortArray) {
-            var accum = 0
-            var accumNBits = 0
-            tables.forEach { table ->
-                table.replace {
-                    while (bb.hasRemaining() && accumNBits + 8 <= 32) {
-                        accum = accum or (bb.get().toInt() and 0xFF shl accumNBits)
-                        accumNBits += 8
+            var bitCache = 0
+            var bitCacheSize = 0
+            var i = 0
+            while (i < tables.size) {
+                tables[i++].replace {
+                    while (bb.hasRemaining() && bitCacheSize + 8 <= 32) {
+                        bitCache = bitCache or (bb.getUByte() shl bitCacheSize)
+                        bitCacheSize += 8
                     }
 
-                    val nbits = FREQ_NBITS_TABLE[accum and 0x1F]
-                    if (nbits > accumNBits) {
+                    val nbits = FREQ_NBITS_TABLE[bitCache and 0x1F]
+                    if (nbits > bitCacheSize) {
                         throw LZFSEDecoderException()
                     }
 
-                    value(accum, nbits)
+                    value(bitCache, nbits)
                             .also {
-                                accum = accum ushr nbits
-                                accumNBits -= nbits
+                                bitCache = bitCache ushr nbits
+                                bitCacheSize -= nbits
                             }
                 }
             }
-            if (accumNBits >= 8 || bb.hasRemaining()) {
+
+            if (bitCacheSize >= 8 || bb.hasRemaining()) {
                 throw LZFSEDecoderException()
             }
         }
 
-        private val FREQ_NBITS_TABLE = intArrayOf(2, 3, 2, 5, 2, 3, 2, 8, 2, 3, 2, 5, 2, 3, 2, 14, 2, 3, 2, 5, 2, 3, 2, 8, 2, 3, 2, 5, 2, 3, 2, 14)
+        private val FREQ_NBITS_TABLE = intArrayOf(
+                2, 3, 2, 5, 2, 3, 2, 8,
+                2, 3, 2, 5, 2, 3, 2, 14,
+                2, 3, 2, 5, 2, 3, 2, 8,
+                2, 3, 2, 5, 2, 3, 2, 14)
 
         private fun value(bits: Int, nBits: Int): Short {
             return when (nBits) {
@@ -232,7 +235,11 @@ internal class LZFSEBlockHeader {
             }
         }
 
-        private val FREQ_VALUE_TABLE = shortArrayOf(0, 2, 1, 4, 0, 3, 1, -1, 0, 2, 1, 5, 0, 3, 1, -1, 0, 2, 1, 6, 0, 3, 1, -1, 0, 2, 1, 7, 0, 3, 1, -1)
+        private val FREQ_VALUE_TABLE = shortArrayOf(
+                0, 2, 1, 4, 0, 3, 1, -1,
+                0, 2, 1, 5, 0, 3, 1, -1,
+                0, 2, 1, 6, 0, 3, 1, -1,
+                0, 2, 1, 7, 0, 3, 1, -1)
 
         private fun clear(vararg tables: ShortArray) {
             tables.forEach { it.fill(0) }
@@ -248,14 +255,9 @@ internal class LZFSEBlockHeader {
     }
 }
 
-inline fun IntArray.mapInPlace(transform: (Int) -> Int) {
-    forEachIndexed { i, v ->
-        this[i] = transform(v)
-    }
-}
-
 inline fun ShortArray.replace(transform: () -> Short) {
-    indices.forEach { i ->
-        this[i] = transform()
+    var i = 0
+    while (i < size) {
+        this[i++] = transform()
     }
 }

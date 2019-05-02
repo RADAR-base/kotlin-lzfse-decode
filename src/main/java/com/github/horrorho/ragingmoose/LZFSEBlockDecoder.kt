@@ -25,9 +25,7 @@ package com.github.horrorho.ragingmoose
 
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder.LITTLE_ENDIAN
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.ParametersAreNonnullByDefault
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
 
@@ -42,12 +40,12 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private val mValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_M_STATES)
     private val dValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_D_STATES)
     private val literalDecoder: LZFSELiteralDecoder = LZFSELiteralDecoder(LZFSEConstants.ENCODE_LITERAL_STATES)
+    private val bitInStream = BitInStream()
 
     private val literals = ByteArray(LZFSEConstants.LITERALS_PER_BLOCK + 64)
     private var pos: Int = 0
 
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
-    private lateinit var `in`: BitInStream
 
     private var rawBytes: Int = 0
     private var symbols: Int = 0
@@ -69,7 +67,7 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
 
         bb = bb.withCapacity(bh.nLmdPayloadBytes, 32)
         ch.readFully(bb)
-        `in` = BitInStream(bb, bh.lmdBits)
+        bitInStream.init(bb, bh.lmdBits)
 
         rawBytes = bh.nRawBytes
         symbols = bh.nMatches
@@ -94,10 +92,10 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     override fun lmd(): Boolean {
         return if (symbols > 0) {
             symbols--
-            `in`.fill()
-            l = lValueDecoder.decode(`in`)
-            m = mValueDecoder.decode(`in`)
-            d = dValueDecoder.decode(`in`)
+            bitInStream.fill()
+            l = lValueDecoder.decode(bitInStream)
+            m = mValueDecoder.decode(bitInStream)
+            d = dValueDecoder.decode(bitInStream)
             true
         } else {
             false
@@ -105,7 +103,7 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     }
 
     override fun toString(): String {
-        return "LZFSEBlockDecoder{lValueDecoder=$lValueDecoder, mValueDecoder=$mValueDecoder, dValueDecoder=$dValueDecoder, literalDecoder=$literalDecoder, literals=.length${literals.size}, bb=$bb, in=$`in`}"
+        return "LZFSEBlockDecoder{lValueDecoder=$lValueDecoder, mValueDecoder=$mValueDecoder, dValueDecoder=$dValueDecoder, literalDecoder=$literalDecoder, literals=.length${literals.size}, bb=$bb, bitInStream=$bitInStream}"
     }
 
     companion object {

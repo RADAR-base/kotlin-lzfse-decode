@@ -1,7 +1,6 @@
 package com.github.horrorho.ragingmoose
 
 import java.io.OutputStream
-import java.lang.IllegalArgumentException
 import kotlin.random.Random
 
 class EncoderGenerator(val cfg: EncoderConfig) {
