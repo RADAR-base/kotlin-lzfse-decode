@@ -105,7 +105,7 @@ internal class LZFSEBlockHeader {
     internal var literalState = intArrayOf(0, 0, 0, 0)
 
     @Throws(IOException::class, LZFSEDecoderException::class)
-    fun loadV1(@WillNotClose ch: ReadableByteChannel): LZFSEBlockHeader {
+    fun loadV1(@WillNotClose ch: ReadableByteChannel) {
         bb.rewind().limit(V1_SIZE)
         ch.readFully(bb).flip()
 
@@ -128,12 +128,10 @@ internal class LZFSEBlockHeader {
         dState = bb.short.toInt()
 
         initV1Tables(bb, lFreq, mFreq, dFreq, literalFreq)
-
-        return this
     }
 
     @Throws(IOException::class, LZFSEDecoderException::class)
-    fun loadV2(@WillNotClose `in`: ReadableByteChannel): LZFSEBlockHeader {
+    fun loadV2(@WillNotClose `in`: ReadableByteChannel) {
         bb.rewind().limit(V2_SIZE)
         `in`.readFully(bb).flip()
 
@@ -173,7 +171,6 @@ internal class LZFSEBlockHeader {
                 initV2Tables(bb, lFreq, mFreq, dFreq, literalFreq)
             }
         }
-        return this
     }
 
     override fun toString(): String {
@@ -229,8 +226,8 @@ internal class LZFSEBlockHeader {
 
         private fun value(bits: Int, nBits: Int): Short {
             return when (nBits) {
-                8 -> (8 + (bits.ushr(4) and 0x000F)).toShort()
-                14 -> (24 + (bits.ushr(4) and 0x03FF)).toShort()
+                8 -> (8 + ((bits ushr 4) and 0x000F)).toShort()
+                14 -> (24 + ((bits ushr 4) and 0x03FF)).toShort()
                 else -> FREQ_VALUE_TABLE[bits and 0x1F]
             }
         }

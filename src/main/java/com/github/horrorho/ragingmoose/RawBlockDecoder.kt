@@ -28,6 +28,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 import javax.annotation.WillNotClose
 import javax.annotation.concurrent.NotThreadSafe
+import kotlin.math.min
 
 /**
  *
@@ -39,7 +40,7 @@ internal class RawBlockDecoder : BlockDecoder {
 
     @Throws(IOException::class)
     fun init(header: RawBlockHeader, @WillNotClose ch: ReadableByteChannel): RawBlockDecoder {
-        bb = bb.withCapacity(header.nRawBytes())
+        bb = bb.withCapacity(header.nRawBytes)
         ch.readFully(bb).rewind()
         return this
     }
@@ -51,7 +52,7 @@ internal class RawBlockDecoder : BlockDecoder {
 
     @Throws(IOException::class)
     override fun read(b: ByteArray, off: Int, len: Int): Int {
-        val available = Math.min(bb.remaining(), len)
+        val available = min(bb.remaining(), len)
         bb.get(b, off, available)
         return available
     }

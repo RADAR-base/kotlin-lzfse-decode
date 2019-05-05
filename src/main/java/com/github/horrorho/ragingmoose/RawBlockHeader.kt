@@ -37,20 +37,15 @@ internal class RawBlockHeader {
 
     private val bb = BufferUtil.withCapacity(4)
 
-    private var nRawBytes: Int = 0
+    internal var nRawBytes: Int = 0
+        private set
 
     @Throws(IOException::class)
-    fun load(@WillNotClose ch: ReadableByteChannel): RawBlockHeader {
+    fun load(@WillNotClose ch: ReadableByteChannel) {
         bb.rewind()
         ch.readFully(bb).flip()
 
         nRawBytes = bb.int
-
-        return this
-    }
-
-    fun nRawBytes(): Int {
-        return nRawBytes
     }
 
     override fun toString(): String {

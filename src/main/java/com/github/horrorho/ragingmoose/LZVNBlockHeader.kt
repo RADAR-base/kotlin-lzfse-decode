@@ -40,14 +40,12 @@ internal class LZVNBlockHeader {
     internal var nPayloadBytes: Int = 0
 
     @Throws(IOException::class)
-    fun load(@WillNotClose ch: ReadableByteChannel): LZVNBlockHeader {
+    fun load(@WillNotClose ch: ReadableByteChannel) {
         bb.rewind()
         ch.readFully(bb).flip()
 
         nRawBytes = bb.int
         nPayloadBytes = bb.int
-
-        return this
     }
 
     override fun toString(): String {

@@ -57,8 +57,8 @@ constructor(nStates: Int) {
 
     @NotThreadSafe
     internal class ValueEntry : TANS.Entry() {
-        var vBits: Int = 0
-        var vBase: Int = 0
+        private var vBits: Int = 0
+        private var vBase: Int = 0
 
         fun readVData(bitIn: BitInStream) = vBase + bitIn.read(vBits)
 
