@@ -16,6 +16,8 @@ The constructor accepts a [ReadableByteChannel](https://docs.oracle.com/javase/8
 
 A simple example that decodes and prints the contents of an LZFSE compressed text archive. [LZFSEException](https://github.com/RADAR-base/kotlin-lzfse-decompress/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEException.java)s signify errors in the underlying data format.
 
+Below is a Kotlin example:
+
 ```kotlin
 try {
     Files.newByteChannel(Paths.get("my.lzfse.compressed.text.file")).use { channel ->
@@ -29,7 +31,9 @@ try {
 }
 ```
 
-```Java
+And here is a Java example:
+
+```java
 Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
 
 byte[] buffer = new byte[4096];
