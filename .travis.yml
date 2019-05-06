@@ -11,6 +11,14 @@ cache:
     - $HOME/.gradle/native
     - $HOME/.gradle/wrapper
 
+before_install:
+  # Install LZFSE
+  - git clone https://github.com/lzfse/lzfse.git
+  - cd lzfse
+  - make install INSTALL_PREFIX=/home/travis
+  - export PATH=$PATH:/home/travis/bin
+  - cd ..
+
 deploy:
   - provider: releases
     api_key: ${GH_TOKEN}
