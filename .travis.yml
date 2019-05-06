@@ -1,0 +1,35 @@
+language: java
+jdk:
+  - oraclejdk11
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/jars-1
+    - $HOME/.gradle/caches/jars-2
+    - $HOME/.gradle/caches/jars-3
+    - $HOME/.gradle/caches/modules-2/files-2.1/
+    - $HOME/.gradle/native
+    - $HOME/.gradle/wrapper
+
+before_install:
+  # Install LZFSE
+  - git clone https://github.com/lzfse/lzfse.git
+  - cd lzfse
+  - make install INSTALL_PREFIX=/home/travis
+  - export PATH=$PATH:/home/travis/bin
+  - cd ..
+
+deploy:
+  - provider: releases
+    api_key: ${GH_TOKEN}
+    file_glob: true
+    file:
+      - "*/build/libs/*.jar"
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: script
+    script: ./gradlew bintrayUpload
+    skip_cleanup: true
+    on:
+      tags: true

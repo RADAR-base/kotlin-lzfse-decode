@@ -1,4 +1,4 @@
-# kotlin-lzfse
+# kotlin-lzfse-decode
 
 A Kotlin [LZFSE](https://github.com/lzfse/lzfse) capable decoder. This code base is a Kotlin adaptation of the [RagingMoose](https://github.com/horrorho/RagingMoose) Java LZFSE decoder, with some small optimizations applied. That codebase has been designed from the ground up as and barring constants/ tables and a few core routines, has little in the way of resemblance to the source material.
 
@@ -10,11 +10,13 @@ For command line usage or increased performance on large datasets, I would sugge
 
 ## Usage
 
-Create an instance of [LZFSEInputStream](https://github.com/RADAR-base/kotlin-lzfse-decode/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEInputStream.java) and consume/ close as an [InputStream](https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html).
+Create an instance of [LZFSEInputStream](https://github.com/RADAR-base/kotlin-lzfse-decode/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEInputStream.kt) and consume/ close as an [InputStream](https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html).
 
 The constructor accepts a [ReadableByteChannel](https://docs.oracle.com/javase/8/docs/api/java/nio/channels/ReadableByteChannel.html) or an InputStream.
 
-A simple example that decodes and prints the contents of an LZFSE compressed text archive. [LZFSEException](https://github.com/RADAR-base/kotlin-lzfse-decompress/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEException.java)s signify errors in the underlying data format.
+A simple example that decodes and prints the contents of an LZFSE compressed text archive. [LZFSEException](https://github.com/RADAR-base/kotlin-lzfse-decode/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEException.kt)s signify errors in the underlying data format.
+
+Below is a Kotlin example:
 
 ```kotlin
 try {
@@ -29,23 +31,25 @@ try {
 }
 ```
 
-```Java
-    Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
-    
-    byte[] buffer = new byte[4096];
-    try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
-            ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        int nRead;
-        while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
-            baos.write(buffer, 0, numRead);
-        }
-        System.out.println(baos.toString("UTF-8"));
+And here is a Java example:
 
-    } catch (LZFSEException ex) {
-        System.err.println("Bad LZFSE archive: " + path);
-    } catch (IOException ex) {
-        System.err.println("IOException: " + ex.toString());
+```java
+Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
+
+byte[] buffer = new byte[4096];
+try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+    int nRead;
+    while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
+        baos.write(buffer, 0, numRead);
     }
+    System.out.println(baos.toString("UTF-8"));
+
+} catch (LZFSEException ex) {
+    System.err.println("Bad LZFSE archive: " + path);
+} catch (IOException ex) {
+    System.err.println("IOException: " + ex.toString());
+}
 ```
 
 ## License
