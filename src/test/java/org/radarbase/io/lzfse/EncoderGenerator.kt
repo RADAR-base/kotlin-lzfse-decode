@@ -1,4 +1,4 @@
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.OutputStream
 import kotlin.random.Random

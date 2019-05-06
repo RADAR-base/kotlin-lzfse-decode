@@ -21,9 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
-
-import javax.annotation.concurrent.NotThreadSafe
+package org.radarbase.io.lzfse
 
 /**
  * tANS - asymmetric numeral systems tabled variant
@@ -31,11 +29,9 @@ import javax.annotation.concurrent.NotThreadSafe
  * @author Ayesha
  * @param <T>
 </T> */
-@NotThreadSafe
-internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
+internal class TANS<T : TANS.Entry>(internal val table: Array<T>) {
     private val nZero: Int = Integer.numberOfLeadingZeros(table.size)
 
-    @NotThreadSafe
     internal open class Entry {
         fun readData(bitIn: BitInStream) = nBase + bitIn.read(nBits)
 
@@ -44,7 +40,6 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
         var symbol: Byte = 0
     }
 
-    @NotThreadSafe
     internal class State {
         var value: Int = 0
 
@@ -54,6 +49,7 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
     }
 
     fun transition(state: IntArray, `in`: BitInStream, literals: ByteArray, literalOff: Int) {
+        // do not use IntRange iterators to prevent unpredictable memory use.
         var i = 0
         while (i < 4) {
             val entry = table[state[i]]
@@ -71,10 +67,10 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
 
     inline fun foreach(consumer: (T) -> Unit) = table.forEach(consumer)
 
-    @Throws(LZFSEDecoderException::class)
+    @Throws(LZFSEException::class)
     fun init(weights: ShortArray): TANS<T> {
         if (weights.size > 256) {
-            throw LZFSEDecoderException()
+            throw LZFSEException()
         }
         try {
             var t = 0
@@ -83,7 +79,7 @@ internal class TANS<T : TANS.Entry>(private val table: Array<T>) {
             }
             return this
         } catch (ex: ArrayIndexOutOfBoundsException) {
-            throw LZFSEDecoderException(ex)
+            throw LZFSEException(ex)
         }
     }
 

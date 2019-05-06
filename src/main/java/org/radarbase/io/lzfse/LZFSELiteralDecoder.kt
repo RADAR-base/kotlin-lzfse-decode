@@ -21,20 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
-internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
+internal class LZFSELiteralDecoder @Throws(LZFSEException::class)
         constructor(nStates: Int) {
     private val tans: TANS<TANS.Entry> = TANS(Array(nStates) { TANS.Entry() })
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
@@ -47,20 +44,23 @@ internal class LZFSELiteralDecoder @Throws(LZFSEDecoderException::class)
     var nLiteralPayloadBytes: Int = 0
     var nLiterals: Int = 0
     var literalBits: Int = 0
+
+    // reuse stream to prevent unpredictable memory use.
     private val bitInStream = BitInStream()
 
-    @Throws(LZFSEDecoderException::class)
+    @Throws(LZFSEException::class)
     fun load(weights: ShortArray): LZFSELiteralDecoder {
         tans.init(weights)
         return this
     }
 
-    @Throws(IOException::class, LZFSEDecoderException::class)
-    fun decodeInto(@WillNotClose ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
+    @Throws(IOException::class, LZFSEException::class)
+    fun decodeInto(ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
         bb = bb.withCapacity(nLiteralPayloadBytes, 8)
         ch.readFully(bb)
         bitInStream.init(bb, literalBits)
 
+        // do not use IntRange iterators to prevent unpredictable memory use.
         var i = 0
         while (i < nLiterals) {
             bitInStream.fill()

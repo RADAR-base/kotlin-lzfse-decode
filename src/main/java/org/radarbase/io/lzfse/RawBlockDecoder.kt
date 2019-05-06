@@ -21,20 +21,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.ReadableByteChannel
+import kotlin.math.min
 
 /**
  *
  * @author Ayesha
  */
-class LZFSEDecoderException : IOException {
-    constructor()
+internal class RawBlockDecoder : BlockDecoder {
+    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
-    constructor(message: String) : super(message)
+    @Throws(IOException::class)
+    fun init(header: RawBlockHeader, ch: ReadableByteChannel): RawBlockDecoder {
+        bb = bb.withCapacity(header.nRawBytes)
+        ch.readFully(bb).rewind()
+        return this
+    }
 
-    constructor(message: String, cause: Throwable) : super(message, cause)
+    @Throws(IOException::class)
+    override fun read(): Int {
+        return if (bb.hasRemaining()) bb.getUByteInt() else -1
+    }
 
-    constructor(cause: Throwable) : super(cause)
+    @Throws(IOException::class)
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        val available = min(bb.remaining(), len)
+        bb.get(b, off, available)
+        return available
+    }
 }

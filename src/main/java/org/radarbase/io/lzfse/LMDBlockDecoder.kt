@@ -21,17 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
-import javax.annotation.concurrent.NotThreadSafe
 import kotlin.math.min
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
 internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDecoder {
     var l: Int = 0
     var m: Int = 0
@@ -50,12 +48,12 @@ internal abstract class LMDBlockDecoder(private val mb: MatchBuffer) : BlockDeco
                 l--
                 val lit = readLiteral()
                 mb.write(lit)
-                return lit.toInt() and 0xFF
+                return lit.toUByteInt()
             }
             // Match
             if (m > 0) {
                 m--
-                return mb.match(d).toInt() and 0xFF
+                return mb.match(d).toUByteInt()
             }
         } while (lmd())
 

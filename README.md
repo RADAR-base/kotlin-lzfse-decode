@@ -1,152 +1,74 @@
-# RagingMoose
+# kotlin-lzfse
 
-Experimental Java LZFSE capable decompressor.
-
-
-## What is it?
-
-An experimental Java [LZFSE](https://github.com/lzfse/lzfse) capable decompressor created as a fallback solution for [InflatableDonkey](https://github.com/horrorho/InflatableDonkey). The codebase has been designed from the ground up and barring constants/ tables and a few core routines, has little in the way of resemblance to the source material.
-
-I've opted for simplicity and there's little in the way of optimisation. It's presumed that compression will not be supported.
-
-Unit tests are in place with support for extended tests using [tcgen](https://gist.github.com/horrorho/7837e9b83f2aa42d2781374c99fd0ba3) and an external reference [lzfse](https://github.com/lzfse/lzfse) binary (see below). However the decompressor has not been battle tested and bugs may remain.
-
+A Kotlin [LZFSE](https://github.com/lzfse/lzfse) capable decoder. This code base is a Kotlin adaptation of the [RagingMoose](https://github.com/horrorho/RagingMoose) Java LZFSE decoder, with some small optimizations applied. That codebase has been designed from the ground up as and barring constants/ tables and a few core routines, has little in the way of resemblance to the source material.
 
 ## Should I use it?
 
-The raison d'être of RagingMoose is it's ease of integration into Java projects without the use of external dependencies/ interfacing.
+The raison d'être of kotlin-lzfse-decode is it's ease of integration into Java projects without the use of external dependencies/ interfacing.
 
-However I would **strongly** suggest using the reference [lzfse](https://github.com/lzfse/lzfse) compressor in some manner instead if at all possible:
+For command line usage or increased performance on large datasets, I would suggest using the reference [lzfse](https://github.com/lzfse/lzfse) compressor.
 
-- Reference lzfse executable/ ProcessBuilder:
-A (convoluted) example using [ProcessBuilder](https://docs.oracle.com/javase/8/docs/api/java/lang/ProcessBuilder.html) can be found [here](https://github.com/horrorho/RagingMoose/blob/master/src/test/java/com/github/horrorho/ragingmoose/LZFSEInputStreamTest.java#L142). It uses a simple utility class [ProcessAssistant](https://github.com/horrorho/RagingMoose/blob/master/src/test/java/com/github/horrorho/ragingmoose/ProcessAssistant.java) to handle concurrent streaming.
+## Usage
 
-- Reference lzfse library/ JNI:
-[JNI](https://en.wikipedia.org/wiki/Java_Native_Interface) example [header](https://gist.github.com/horrorho/b5b2f7eadfa1d73560dadbe4a0a92b85) and [c code](https://gist.github.com/horrorho/1f9ab1742355c1edcb339935657bff31) for the following call:
+Create an instance of [LZFSEInputStream](https://github.com/RADAR-base/kotlin-lzfse-decode/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEInputStream.java) and consume/ close as an [InputStream](https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html).
 
-```Java
-    public static native long decompress(ByteBuffer src, ByteBuffer dst);
-```
+The constructor accepts a [ReadableByteChannel](https://docs.oracle.com/javase/8/docs/api/java/nio/channels/ReadableByteChannel.html) or an InputStream.
 
-The detailed mechanics of JNI are beyond the scope of this readme.
+A simple example that decodes and prints the contents of an LZFSE compressed text archive. [LZFSEException](https://github.com/RADAR-base/kotlin-lzfse-decompress/blob/master/src/main/java/org/radarbase/io/lzfse/LZFSEException.java)s signify errors in the underlying data format.
 
-Benchmarks comparing RagingMoose and the reference lzfse via JNI/ ProcessBuilder are detailed below.
-
-
-## How do I use it?
-
-Create an instance of [LZFSEInputStream](https://github.com/horrorho/RagingMoose/blob/master/src/main/java/com/github/horrorho/ragingmoose/LZFSEInputStream.java) and consume/ close as an [InputStream](https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html).
-
-The native constructor accepts [ReadableByteChannel](https://docs.oracle.com/javase/8/docs/api/java/nio/channels/ReadableByteChannel.html)s.
-
-```Java
-    public LZFSEInputStream(ReadableByteChannel ch) {
-        ...
+```kotlin
+try {
+    Files.newByteChannel(Paths.get("my.lzfse.compressed.text.file")).use { channel ->
+        val data = LZFSEInputStream(channel).use { it.readAllBytes() }
+        println(data.toString(Charsets.UTF_8))
     }
+} catch (ex: LZFSEException) {
+    println("Bad LZFSE archive: $path")
+} catch (ex: IOException) {
+    println("IOException: $ex")
+}
 ```
-
-
-The InputStream constructor wraps over the native constructor using the [Channels#newChannel](https://docs.oracle.com/javase/8/docs/api/java/nio/channels/Channels.html#newChannel-java.io.InputStream-) adapter. 
-
-```Java
-    public LZFSEInputStream(InputStream is) {
-        this(Channels.newChannel(is));
-    }
-```
-
-
-A simple example that decompresses and prints the contents of an LZFSE compressed text archive. [LZFSEDecoderException](https://github.com/horrorho/RagingMoose/blob/master/src/main/java/com/github/horrorho/ragingmoose/LZFSEDecoderException.java)s signify errors in the underlying data format.
 
 ```Java
     Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
     
+    byte[] buffer = new byte[4096];
     try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        int b;
-        while ((b = is.read()) != -1) {
-            baos.write(b);
+        int nRead;
+        while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
+            baos.write(buffer, 0, numRead);
         }
         System.out.println(baos.toString("UTF-8"));
 
-    } catch (LZFSEDecoderException ex) {
+    } catch (LZFSEException ex) {
         System.err.println("Bad LZFSE archive: " + path);
-
     } catch (IOException ex) {
         System.err.println("IOException: " + ex.toString());
     }
 ```
 
-## Benchmarks
-Decompression benchmarks using [JMH](http://openjdk.java.net/projects/code-tools/jmh/). The core benchmarking code is [here](https://gist.github.com/horrorho/56eb417ac415c3aa0893849713d54750). Tests are conducted on in-memory byte data. Use the figures as a rough guide only as your use case/ environment may differ significantly.
+## License
 
-- iOS 11 sqlitedb file. 460 bytes (16,384 bytes bytes uncompressed):
+The current license is the Apache License 2.0 as is contained in the LICENSE file. This code is re-licensed from MIT license as quoted:
 
-```
-Benchmark                            Mode  Cnt      Score     Error  Units
-LZFSEBenchmark.lzfseJNI             thrpt   20  32444.002 ± 300.831  ops/s
-LZFSEBenchmark.lzfseProcessBuilder  thrpt   20   2086.615 ± 130.519  ops/s
-LZFSEBenchmark.ragingMoose          thrpt   20  12571.402 ± 458.201  ops/s
-```
-
-- J.R.R.Tolkien, The Hobbit. Chapter 1. 47,257 bytes (18,905 bytes compressed):
-
-```
-Benchmark                            Mode  Cnt     Score     Error  Units
-LZFSEBenchmark.lzfseJNI             thrpt   20  5404.936 ± 379.371  ops/s
-LZFSEBenchmark.lzfseProcessBuilder  thrpt   20  1900.292 ±   8.834  ops/s
-LZFSEBenchmark.ragingMoose          thrpt   20  1631.971 ± 102.401  ops/s
-```
-
- - Homer, The Iliad. Full. 808,298 bytes (297,947 bytes compressed):
-
-```
-Benchmark                            Mode  Cnt    Score    Error  Units
-LZFSEBenchmark.lzfseJNI             thrpt   20  307.237 ± 26.004  ops/s
-LZFSEBenchmark.lzfseProcessBuilder  thrpt   20  251.843 ±  1.500  ops/s
-LZFSEBenchmark.ragingMoose          thrpt   20  116.270 ±  7.660  ops/s
-```
-
-- [Rust-lang](https://github.com/rust-lang/rust), rust-master tarball. 42,270,720 bytes (6,813,253 bytes compressed):
-
-```
-Benchmark                            Mode  Cnt   Score   Error  Units
-LZFSEBenchmark.lzfseJNI             thrpt   20  11.388 ± 0.220  ops/s
-LZFSEBenchmark.lzfseProcessBuilder  thrpt   20   5.989 ± 0.166  ops/s
-LZFSEBenchmark.ragingMoose          thrpt   20   4.583 ± 0.150  ops/s
-```
-
-## Extended unit tests
-[LZFSEInputStreamTest#tcgenTest](https://github.com/horrorho/RagingMoose/blob/master/src/test/java/com/github/horrorho/ragingmoose/LZFSEInputStreamTest.java#L107) is by default set to `@Ignore`. It requires both the [tcgen](https://gist.github.com/horrorho/7837e9b83f2aa42d2781374c99fd0ba3) and [lzfse](https://github.com/lzfse/lzfse) binaries to be on the command path either as `.exe` binaries or their extensionless counterparts.
-
-With the binaries in place and `@Ignore` deleted/ commented out an additional series of tests is performed. These generate test data using `tcgen`. This data is then compressed with the reference `lzfse` binary and in turn decompressed by RagingMoose. We expected the decompressed data to match the generated test data.
-
-The data is cut to predetermined lengths to hit the various underlying block types (bvx-, bvxn, bvx2).
-
-```
--------------------------------------------------------
- T E S T S
--------------------------------------------------------
-Running com.github.horrorho.ragingmoose.LZFSEInputStreamTest
-Tests run: 32, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 14.196 sec - in com.github.horrorho.ragingmoose.LZFSEInputStreamTest
-
-Results :
-
-Tests run: 32, Failures: 0, Errors: 0, Skipped: 1
-```
-
-[LZFSEInputStreamTest#tcgenTestExt](https://github.com/horrorho/RagingMoose/blob/master/src/test/java/com/github/horrorho/ragingmoose/LZFSEInputStreamTest.java#L143) is by default set to `@Ignore`. It's essentially a sanity test and bypasses RagingMoose entirely and compresses/ decompresses using [lzfse](https://github.com/lzfse/lzfse). It's not suitable as a benchmark as the chokepoint is in [tcgen](https://gist.github.com/horrorho/7837e9b83f2aa42d2781374c99fd0ba3) test data generation.
-
-
-## What's with the name?
-
-I'm not quite sure... It seemed like a good idea at the time.
-
-
-## Links
-[LZFSE](https://github.com/lzfse/lzfse) - reference implementation.
-
-[Asymmetric_Numeral_Systems](https://en.wikipedia.org/wiki/Asymmetric_Numeral_Systems) - bed time reading.
-
-[Finite State Entropy - A new breed of entropy coder](http://fastcompression.blogspot.co.uk/2013/12/finite-state-entropy-new-breed-of.html) - wonderful series of articles.
-
-[Compression test file generator](https://encode.ru/threads/1306-Compression-test-file-generator) - interesting thread post by [Matt Mahoney](http://mattmahoney.net/) author of `tcgen`. I've warped some of the examples into unit tests.
+> Copyright 2017 Ayesha.
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+ ```

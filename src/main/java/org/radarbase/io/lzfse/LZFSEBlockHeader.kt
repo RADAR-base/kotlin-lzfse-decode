@@ -21,19 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
 internal class LZFSEBlockHeader {
     private val bb = BufferUtil.withCapacity(V1_SIZE)
 
@@ -43,55 +40,55 @@ internal class LZFSEBlockHeader {
     internal val dFreq = ShortArray(LZFSEConstants.ENCODE_D_SYMBOLS)
 
     internal var nRawBytes: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         private set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
 
     private var nPayloadBytes: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
 
     internal var nLiterals: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         private set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
 
     internal var nMatches: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         private set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
 
     internal var nLiteralPayloadBytes: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         private set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
 
     internal var nLmdPayloadBytes: Int = 0
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         private set(value) {
             if (value < 0) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
             field = value
         }
@@ -104,8 +101,7 @@ internal class LZFSEBlockHeader {
     internal var dState: Int = 0
     internal var literalState = intArrayOf(0, 0, 0, 0)
 
-    @Throws(IOException::class, LZFSEDecoderException::class)
-    fun loadV1(@WillNotClose ch: ReadableByteChannel) {
+    fun loadV1(ch: ReadableByteChannel) {
         bb.rewind().limit(V1_SIZE)
         ch.readFully(bb).flip()
 
@@ -130,8 +126,7 @@ internal class LZFSEBlockHeader {
         initV1Tables(bb, lFreq, mFreq, dFreq, literalFreq)
     }
 
-    @Throws(IOException::class, LZFSEDecoderException::class)
-    fun loadV2(@WillNotClose `in`: ReadableByteChannel) {
+    fun loadV2(`in`: ReadableByteChannel) {
         bb.rewind().limit(V2_SIZE)
         `in`.readFully(bb).flip()
 
@@ -163,7 +158,7 @@ internal class LZFSEBlockHeader {
 
         when {
             nCompressedPayload == 0 -> clear(lFreq, mFreq, dFreq, literalFreq)
-            nCompressedPayload > bb.capacity() -> throw LZFSEDecoderException()
+            nCompressedPayload > bb.capacity() -> throw LZFSEException()
             else -> {
                 bb.rewind().limit(nCompressedPayload)
                 `in`.readFully(bb).flip()
@@ -178,8 +173,7 @@ internal class LZFSEBlockHeader {
     }
 
     companion object {
-
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         fun initV1Tables(bb: ByteBuffer, vararg tables: ShortArray) {
             tables.forEach { table ->
                 table.indices.forEach { i ->
@@ -188,7 +182,7 @@ internal class LZFSEBlockHeader {
             }
         }
 
-        @Throws(LZFSEDecoderException::class)
+        @Throws(LZFSEException::class)
         fun initV2Tables(bb: ByteBuffer, vararg tables: ShortArray) {
             var bitCache = 0
             var bitCacheSize = 0
@@ -196,13 +190,13 @@ internal class LZFSEBlockHeader {
             while (i < tables.size) {
                 tables[i++].replace {
                     while (bb.hasRemaining() && bitCacheSize + 8 <= 32) {
-                        bitCache = bitCache or (bb.getUByte() shl bitCacheSize)
+                        bitCache = bitCache or (bb.getUByteInt() shl bitCacheSize)
                         bitCacheSize += 8
                     }
 
                     val nbits = FREQ_NBITS_TABLE[bitCache and 0x1F]
                     if (nbits > bitCacheSize) {
-                        throw LZFSEDecoderException()
+                        throw LZFSEException()
                     }
 
                     value(bitCache, nbits)
@@ -214,7 +208,7 @@ internal class LZFSEBlockHeader {
             }
 
             if (bitCacheSize >= 8 || bb.hasRemaining()) {
-                throw LZFSEDecoderException()
+                throw LZFSEException()
             }
         }
 

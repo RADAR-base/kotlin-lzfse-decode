@@ -21,12 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.lang.Long.toHexString
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import javax.annotation.concurrent.NotThreadSafe
 
 
 /**
@@ -34,7 +33,6 @@ import javax.annotation.concurrent.NotThreadSafe
  *
  * @author Ayesha
  */
-@NotThreadSafe
 internal class BitInStream {
     // bitCacheSize 63 bit limit avoids unsupported 64 bit shifts/ branch.
     private var bitCache: Long = 0
@@ -44,7 +42,7 @@ internal class BitInStream {
     fun init(bb: ByteBuffer, bits: Int) {
         this.bb = bb
         when {
-            bits > 0 -> throw LZFSEDecoderException()
+            bits > 0 -> throw LZFSEException()
             bits == 0 -> {
                 bb.position(bb.position() - 7)
                 bitCache = bb.getLong(bb.position() - 1) ushr 8

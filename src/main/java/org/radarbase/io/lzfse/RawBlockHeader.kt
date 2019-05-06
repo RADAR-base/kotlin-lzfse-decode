@@ -21,17 +21,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
-import java.io.EOFException
-import java.nio.ByteBuffer
+import java.io.IOException
 import java.nio.channels.ReadableByteChannel
 
-internal fun ReadableByteChannel.readFully(bb: ByteBuffer): ByteBuffer {
-    while (bb.hasRemaining()) {
-        if (read(bb) == -1) {
-            throw EOFException()
-        }
+/**
+ *
+ * @author Ayesha
+ */
+internal class RawBlockHeader {
+    private val bb = BufferUtil.withCapacity(4)
+
+    internal var nRawBytes: Int = 0
+        private set
+
+    @Throws(IOException::class)
+    fun load(ch: ReadableByteChannel) {
+        bb.rewind()
+        ch.readFully(bb).flip()
+
+        nRawBytes = bb.int
     }
-    return bb
+
+    override fun toString() = "RawBlockHeader{nRawBytes=$nRawBytes}"
 }

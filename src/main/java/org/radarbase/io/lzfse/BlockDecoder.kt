@@ -21,34 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
-import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
-internal class LZVNBlockHeader {
-    private val bb = BufferUtil.withCapacity(8)
-
-    private var nRawBytes: Int = 0
-    internal var nPayloadBytes: Int = 0
+internal interface BlockDecoder {
+    @Throws(IOException::class)
+    fun read(): Int
 
     @Throws(IOException::class)
-    fun load(@WillNotClose ch: ReadableByteChannel) {
-        bb.rewind()
-        ch.readFully(bb).flip()
-
-        nRawBytes = bb.int
-        nPayloadBytes = bb.int
-    }
-
-    override fun toString(): String {
-        return "LZVNBlockHeader{nRawBytes=$nRawBytes, nPayloadBytes=$nPayloadBytes}"
-    }
+    fun read(b: ByteArray, off: Int, len: Int): Int
 }

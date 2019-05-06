@@ -21,34 +21,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
-
-import java.io.IOException
-import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
+package org.radarbase.io.lzfse
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
-internal class RawBlockHeader {
+internal class LZFSEValueDecoder @Throws(LZFSEException::class)
+constructor(nStates: Int) {
+    private val tans: TANS<ValueEntry> = TANS(Array(nStates) { ValueEntry() })
+    private val state: TANS.State = TANS.State()
 
-    private val bb = BufferUtil.withCapacity(4)
+    fun load(weights: ShortArray, symbolVBits: ByteArray, symbolVBase: IntArray): LZFSEValueDecoder {
+        tans.init(weights).foreach { v -> v[symbolVBits] = symbolVBase }
+        return this
+    }
 
-    internal var nRawBytes: Int = 0
-        private set
+    fun state(state: Int): LZFSEValueDecoder {
+        this.state.value = state
+        return this
+    }
 
-    @Throws(IOException::class)
-    fun load(@WillNotClose ch: ReadableByteChannel) {
-        bb.rewind()
-        ch.readFully(bb).flip()
-
-        nRawBytes = bb.int
+    fun decode(`in`: BitInStream): Int {
+        return tans.transition(state, `in`).readVData(`in`)
     }
 
     override fun toString(): String {
-        return "RawBlockHeader{nRawBytes=$nRawBytes}"
+        return "LZFSEValueDecoder{tans=$tans, state=$state}"
+    }
+
+    internal class ValueEntry : TANS.Entry() {
+        private var vBits: Int = 0
+        private var vBase: Int = 0
+
+        fun readVData(bitIn: BitInStream) = vBase + bitIn.read(vBits)
+
+        operator fun set(symbolVBits: ByteArray, symbolVBase: IntArray): ValueEntry {
+            val s = symbol.toUByteInt()
+            this.vBase = symbolVBase[s]
+            this.vBits = symbolVBits[s].toInt()
+            return this
+        }
     }
 }

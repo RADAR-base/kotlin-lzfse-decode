@@ -21,31 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
-import java.io.IOException
+import java.io.EOFException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.ReadableByteChannel
 
-/**
- *
- * @author Ayesha
- */
-internal interface BlockDecoder {
-    @Throws(IOException::class)
-    fun read(): Int
-
-    @Throws(IOException::class)
-    fun read(b: ByteArray, off: Int, len: Int): Int
+internal fun ReadableByteChannel.readFully(bb: ByteBuffer): ByteBuffer {
+    while (bb.hasRemaining()) {
+        if (read(bb) == -1) {
+            throw EOFException()
+        }
+    }
+    return bb
 }
 
-object BufferUtil {
+internal object BufferUtil {
     fun withCapacity(capacity: Int): ByteBuffer {
         return ByteBuffer.allocate(capacity).order(ByteOrder.LITTLE_ENDIAN)
     }
 }
 
-fun ByteBuffer.withCapacity(capacity: Int, atPosition: Int = 0): ByteBuffer {
+internal fun ByteBuffer.withCapacity(capacity: Int, atPosition: Int = 0): ByteBuffer {
     val totalCapacity = capacity + atPosition
     return if (capacity() < totalCapacity) {
         BufferUtil.withCapacity(totalCapacity)

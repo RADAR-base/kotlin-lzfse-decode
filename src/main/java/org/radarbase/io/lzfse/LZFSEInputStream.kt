@@ -21,20 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
 import java.io.InputStream
 import java.lang.Integer.toHexString
 import java.nio.channels.Channels
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.concurrent.NotThreadSafe
 
 /**
- *
- * @author Ayesha
+ * Input stream that decodes an LZFSE encoded stream. On encoding errors, a LZFSEDecoderException is
+ * thrown.
  */
-@NotThreadSafe
 class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
     private val word = BufferUtil.withCapacity(4)
 
@@ -52,6 +50,7 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
 
     constructor(`is`: InputStream) : this(Channels.newChannel(`is`))
 
+    /** Reports 1 if there is data available, 0 if the end of the stream has been reached. */
     override fun available(): Int {
         return if (eos) 0 else 1
     }
@@ -60,20 +59,18 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
     override fun read(): Int {
         try {
             while (!eos) {
-                if (decoder == null) {
-                    next()
-                } else {
-                    val b = decoder!!.read()
+                decoder?.let {
+                    val b = it.read()
                     if (b == -1) {
                         decoder = null
                     } else {
-                        return b
+                        return@read b
                     }
-                }
+                } ?: next()
             }
             return -1
         } catch (ex: RuntimeException) {
-            throw LZFSEDecoderException(ex)
+            throw LZFSEException(ex)
         }
     }
 
@@ -87,65 +84,47 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
         }
         try {
             while (!eos) {
-                if (decoder == null) {
-                    next()
-                } else {
-                    val n = decoder!!.read(b, off, len)
+                decoder?.let {
+                    val n = it.read(b, off, len)
                     if (n == 0) {
                         decoder = null
                     }
-                    return n
-                }
+                    return@read n
+                } ?: next()
             }
             return -1
         } catch (ex: RuntimeException) {
-            throw LZFSEDecoderException(ex)
+            throw LZFSEException(ex)
         }
     }
 
-    @Throws(IOException::class)
-    internal operator fun next() {
-        when (val magic = magic()) {
-            LZFSEConstants.COMPRESSEDV2_BLOCK_MAGIC -> v2Block()
-            LZFSEConstants.COMPRESSEDV1_BLOCK_MAGIC -> v1Block()
-            LZFSEConstants.COMPRESSEDLZVN_BLOCK_MAGIC -> vnBlock()
-            LZFSEConstants.UNCOMPRESSED_BLOCK_MAGIC -> raw()
-            LZFSEConstants.ENDOFSTREAM_BLOCK_MAGIC -> eosBlock()
-            else -> throw LZFSEDecoderException("bad block: 0x" + toHexString(magic))
+    private fun next() {
+        decoder = when (val magic = magic()) {
+            LZFSEConstants.COMPRESSEDV2_BLOCK_MAGIC -> {
+                lzfseBlockHeader.loadV2(ch)
+                lzfseBlockDecoder.init(lzfseBlockHeader, ch)
+            }
+            LZFSEConstants.COMPRESSEDV1_BLOCK_MAGIC -> {
+                lzfseBlockHeader.loadV1(ch)
+                lzfseBlockDecoder.init(lzfseBlockHeader, ch)
+            }
+            LZFSEConstants.COMPRESSEDLZVN_BLOCK_MAGIC -> {
+                lzvnBlockHeader.load(ch)
+                lzvnBlockDecoder.init(lzvnBlockHeader, ch)
+            }
+            LZFSEConstants.UNCOMPRESSED_BLOCK_MAGIC -> {
+                rawBlockHeader.load(ch)
+                rawBlockDecoder.init(rawBlockHeader, ch)
+            }
+            LZFSEConstants.ENDOFSTREAM_BLOCK_MAGIC -> {
+                eos = true
+                null
+            }
+            else -> throw LZFSEException("bad block: 0x" + toHexString(magic))
         }
     }
 
-    @Throws(IOException::class, LZFSEDecoderException::class)
-    internal fun v1Block() {
-        lzfseBlockHeader.loadV1(ch)
-        decoder = lzfseBlockDecoder.init(lzfseBlockHeader, ch)
-    }
-
-    @Throws(IOException::class, LZFSEDecoderException::class)
-    internal fun v2Block() {
-        lzfseBlockHeader.loadV2(ch)
-        decoder = lzfseBlockDecoder.init(lzfseBlockHeader, ch)
-    }
-
-    @Throws(IOException::class)
-    internal fun vnBlock() {
-        lzvnBlockHeader.load(ch)
-        decoder = lzvnBlockDecoder.init(lzvnBlockHeader, ch)
-    }
-
-    @Throws(IOException::class)
-    internal fun raw() {
-        rawBlockHeader.load(ch)
-        decoder = rawBlockDecoder.init(rawBlockHeader, ch)
-    }
-
-    private fun eosBlock() {
-        eos = true
-        decoder = null
-    }
-
-    @Throws(IOException::class)
-    internal fun magic(): Int {
+    private fun magic(): Int {
         word.rewind()
         ch.readFully(word).rewind()
         return word.int

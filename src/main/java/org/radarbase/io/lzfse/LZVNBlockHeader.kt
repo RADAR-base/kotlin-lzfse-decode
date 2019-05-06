@@ -21,39 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
-import kotlin.math.min
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
-internal class RawBlockDecoder : BlockDecoder {
-    private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
+internal class LZVNBlockHeader {
+    private val bb = BufferUtil.withCapacity(8)
+
+    private var nRawBytes: Int = 0
+    internal var nPayloadBytes: Int = 0
 
     @Throws(IOException::class)
-    fun init(header: RawBlockHeader, @WillNotClose ch: ReadableByteChannel): RawBlockDecoder {
-        bb = bb.withCapacity(header.nRawBytes)
-        ch.readFully(bb).rewind()
-        return this
+    fun load(ch: ReadableByteChannel) {
+        bb.rewind()
+        ch.readFully(bb).flip()
+
+        nRawBytes = bb.int
+        nPayloadBytes = bb.int
     }
 
-    @Throws(IOException::class)
-    override fun read(): Int {
-        return if (bb.hasRemaining()) bb.get().toInt() and 0xFF else -1
-    }
-
-    @Throws(IOException::class)
-    override fun read(b: ByteArray, off: Int, len: Int): Int {
-        val available = min(bb.remaining(), len)
-        bb.get(b, off, available)
-        return available
+    override fun toString(): String {
+        return "LZVNBlockHeader{nRawBytes=$nRawBytes, nPayloadBytes=$nPayloadBytes}"
     }
 }

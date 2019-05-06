@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.*
 import java.nio.file.Files
@@ -150,7 +150,7 @@ object ProcessAssistant {
     fun newPipedInputStream(pb: ProcessBuilder, @WillNotClose `is`: InputStream): InputStream {
         val p = pb.start()
         val pis = ProcessInputStream(p)
-        Thread { ProcessInputStream.pipe(`is`, p.outputStream, Consumer { pis.error(it) }) }
+        Thread { ProcessAssistant.ProcessInputStream.pipe(`is`, p.outputStream, Consumer { pis.error(it) }) }
                 .start()
         return pis
     }
@@ -163,7 +163,7 @@ object ProcessAssistant {
 
     fun firstInPath(vararg cmd: String): Optional<String> {
         return Arrays.stream(cmd)
-                .filter(::isInPath)
+                .filter(ProcessAssistant::isInPath)
                 .findFirst()
     }
 

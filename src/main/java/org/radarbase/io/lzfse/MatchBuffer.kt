@@ -21,16 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
-import javax.annotation.concurrent.NotThreadSafe
 import kotlin.math.min
 
 /**
- *
- * @author Ayesha
+ * Buffer for matches. Implemented as a ring buffer.
+ * @param size number of bytes in the buffer, must be a power of 2.
  */
-@NotThreadSafe
 internal class MatchBuffer(size: Int) {
     private val buf: ByteArray = ByteArray(size)
     private val mod: Int = size - 1
@@ -42,15 +40,20 @@ internal class MatchBuffer(size: Int) {
         }
     }
 
+    /** Write single byte to buffer. */
     fun write(b: Byte) {
         buf[p] = b
         p = (p + 1) and mod
     }
 
+    /** Write byte array to buffer, wrapping around if necessary. */
     fun write(b: ByteArray, off: Int, len: Int) {
+        // if the number of bytes is larger than the buffer, discard the first
+        // number of bytes
         val writeLen = min(len, buf.size)
         val writeOffset = off + len - writeLen
         p = (p + len - writeLen) and mod
+
         copyRing(b, writeOffset, buf, p, writeLen)
         p = (p + writeLen) and mod
     }
@@ -62,6 +65,11 @@ internal class MatchBuffer(size: Int) {
         return b
     }
 
+    /**
+     * Read a match and write it back with delay d.
+     * If len is larger than d, this means that after d bytes, multiple copies of the source array
+     * are written back.
+     */
     tailrec fun match(d: Int, b: ByteArray, off: Int, len: Int) {
         if (len <= d) {
             matchUnsafe(d, b, off, len)
@@ -71,6 +79,7 @@ internal class MatchBuffer(size: Int) {
         }
     }
 
+    /** Read a match and write it back with delay d. Delay d must not be larger than len. */
     private fun matchUnsafe(d: Int, b: ByteArray, off: Int, len: Int) {
         val srcOff = (p - d) and mod
         copyRing(buf, srcOff, buf, p, len)
@@ -78,6 +87,7 @@ internal class MatchBuffer(size: Int) {
         p = (p + len) and mod
     }
 
+    /** Copy source buffer to destination, wrapping around if the end of the buffer is encountered. */
     private fun copyRing(src: ByteArray, srcOff: Int, dest: ByteArray, destOff: Int, len: Int) {
         val srcLen = src.size - srcOff
         val destLen = dest.size - destOff

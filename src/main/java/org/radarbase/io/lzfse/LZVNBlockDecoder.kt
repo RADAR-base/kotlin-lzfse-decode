@@ -21,19 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
 
 /**
- *
- * @author Ayesha
+ * LZVN block decoder. Decoding table has some precomputed values for the various
+ * opcodes.
  */
-@NotThreadSafe
 internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private val tbl: Array<() -> Unit> = arrayOf(
             ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::smlD, ::eos, ::lrgD,
@@ -75,7 +72,7 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private var neos = true
 
     @Throws(IOException::class)
-    fun init(header: LZVNBlockHeader, @WillNotClose ch: ReadableByteChannel): LZVNBlockDecoder {
+    fun init(header: LZVNBlockHeader, ch: ReadableByteChannel): LZVNBlockDecoder {
         bb = bb.withCapacity(header.nPayloadBytes)
         ch.readFully(bb).rewind()
 
@@ -89,7 +86,7 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     @Throws(IOException::class)
     override fun lmd(): Boolean {
         if (neos) {
-            val opc = bb.getUByte()
+            val opc = bb.getUByteInt()
             tbl[opc]()
             neos = opc != 6
         }
@@ -113,8 +110,8 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         }
     }
 
-    private fun lrgL(opc: Int): (() -> Unit) = {
-        l = bb.getUByte() + 16
+    private fun lrgL(@Suppress("UNUSED_PARAMETER") opc: Int): (() -> Unit) = {
+        l = bb.getUByteInt() + 16
     }
 
     private fun smlM(opc: Int): (() -> Unit) {
@@ -125,9 +122,9 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         }
     }
 
-    private fun lrgM(opc: Int): (() -> Unit) = {
+    private fun lrgM(@Suppress("UNUSED_PARAMETER") opc: Int): (() -> Unit) = {
         // 11110000 MMMMMMMM
-        m = bb.getUByte() + 16
+        m = bb.getUByteInt() + 16
 
     }
 
@@ -149,7 +146,7 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
             // LLMMMDDD DDDDDDDD LITERAL
             l = newL
             m = newM
-            d = newD or bb.getUByte()
+            d = newD or bb.getUByteInt()
         }
     }
 
@@ -172,14 +169,11 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
             // LLMMM111 DDDDDDDD DDDDDDDD LITERAL
             l = newL
             m = newM
-            d = bb.getUShort()
+            d = bb.getUShortInt()
         }
     }
 
-    private fun nop(opc: Int): (() -> Unit) = {}
+    private fun nop(@Suppress("UNUSED_PARAMETER") opc: Int): (() -> Unit) = {}
     private fun eos(opc: Int): (() -> Unit) = nop(opc)
-    private fun udef(opc: Int): () -> Unit = { throw LZFSEDecoderException() }
+    private fun udef(@Suppress("UNUSED_PARAMETER") opc: Int): () -> Unit = { throw LZFSEException() }
 }
-
-fun ByteBuffer.getUByte(): Int = get().toInt() and 0xFF
-fun ByteBuffer.getUShort(): Int = short.toInt() and 0xFFFF

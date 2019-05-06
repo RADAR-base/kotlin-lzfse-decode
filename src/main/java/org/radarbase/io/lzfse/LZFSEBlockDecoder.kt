@@ -21,21 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
-import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import javax.annotation.WillNotClose
-import javax.annotation.concurrent.NotThreadSafe
 
 /**
  *
  * @author Ayesha
  */
-@NotThreadSafe
-internal class LZFSEBlockDecoder @Throws(LZFSEDecoderException::class)
-constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
+internal class LZFSEBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private val lValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_L_STATES)
     private val mValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_M_STATES)
     private val dValueDecoder: LZFSEValueDecoder = LZFSEValueDecoder(LZFSEConstants.ENCODE_D_STATES)
@@ -50,8 +45,7 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private var rawBytes: Int = 0
     private var symbols: Int = 0
 
-    @Throws(LZFSEDecoderException::class, IOException::class)
-    fun init(bh: LZFSEBlockHeader, @WillNotClose ch: ReadableByteChannel): LZFSEBlockDecoder {
+    fun init(bh: LZFSEBlockHeader, ch: ReadableByteChannel): LZFSEBlockDecoder {
         lValueDecoder.load(bh.lFreq, L_EXTRA_BITS, L_BASE_VALUE)
                 .state(bh.lState)
         mValueDecoder.load(bh.mFreq, M_EXTRA_BITS, M_BASE_VALUE)
@@ -77,18 +71,15 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         return this
     }
 
-    @Throws(IOException::class)
     override fun readLiteral(): Byte {
         return literals[pos++]
     }
 
-    @Throws(IOException::class)
     override fun readLiteralBytes(b: ByteArray, off: Int, len: Int) {
         System.arraycopy(literals, pos, b, off, len)
         pos += len
     }
 
-    @Throws(LZFSEDecoderException::class)
     override fun lmd(): Boolean {
         return if (symbols > 0) {
             symbols--
@@ -107,16 +98,44 @@ constructor(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     }
 
     companion object {
-        private val L_EXTRA_BITS = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 5, 8)
+        private val L_EXTRA_BITS = byteArrayOf(
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                2, 3, 5, 8)
 
-        private val L_BASE_VALUE = intArrayOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 28, 60)
+        private val L_BASE_VALUE = intArrayOf(
+                0, 1, 2, 3, 4, 5, 6, 7,
+                8, 9, 10, 11, 12, 13, 14, 15,
+                16, 20, 28, 60)
 
-        private val M_EXTRA_BITS = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 11)
+        private val M_EXTRA_BITS = byteArrayOf(
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                3, 5, 8, 11)
 
-        private val M_BASE_VALUE = intArrayOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 24, 56, 312)
+        private val M_BASE_VALUE = intArrayOf(
+                0, 1, 2, 3, 4, 5, 6, 7,
+                8, 9, 10, 11, 12, 13, 14, 15,
+                16, 24, 56, 312)
 
-        private val D_EXTRA_BITS = byteArrayOf(0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15)
+        private val D_EXTRA_BITS = byteArrayOf(
+                0, 0, 0, 0, 1, 1, 1, 1,
+                2, 2, 2, 2, 3, 3, 3, 3,
+                4, 4, 4, 4, 5, 5, 5, 5,
+                6, 6, 6, 6, 7, 7, 7, 7,
+                8, 8, 8, 8, 9, 9, 9, 9,
+                10, 10, 10, 10, 11, 11, 11, 11,
+                12, 12, 12, 12, 13, 13, 13, 13,
+                14, 14, 14, 14, 15, 15, 15, 15)
 
-        private val D_BASE_VALUE = intArrayOf(0, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 28, 36, 44, 52, 60, 76, 92, 108, 124, 156, 188, 220, 252, 316, 380, 444, 508, 636, 764, 892, 1020, 1276, 1532, 1788, 2044, 2556, 3068, 3580, 4092, 5116, 6140, 7164, 8188, 10236, 12284, 14332, 16380, 20476, 24572, 28668, 32764, 40956, 49148, 57340, 65532, 81916, 98300, 114684, 131068, 163836, 196604, 229372)
+        private val D_BASE_VALUE = intArrayOf(
+                0, 1, 2, 3, 4, 6, 8, 10,
+                12, 16, 20, 24, 28, 36, 44, 52,
+                60, 76, 92, 108, 124, 156, 188, 220,
+                252, 316, 380, 444, 508, 636, 764, 892,
+                1020, 1276, 1532, 1788, 2044, 2556, 3068, 3580,
+                4092, 5116, 6140, 7164, 8188, 10236, 12284, 14332,
+                16380, 20476, 24572, 28668, 32764, 40956, 49148, 57340,
+                65532, 81916, 98300, 114684, 131068, 163836, 196604, 229372)
     }
 }

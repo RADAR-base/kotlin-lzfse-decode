@@ -21,10 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.github.horrorho.ragingmoose
+package org.radarbase.io.lzfse
 
-import com.github.horrorho.ragingmoose.ProcessAssistant.firstInPath
-import com.github.horrorho.ragingmoose.ProcessAssistant.newPipedInputStream
+import org.radarbase.io.lzfse.ProcessAssistant.firstInPath
+import org.radarbase.io.lzfse.ProcessAssistant.newPipedInputStream
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assumptions.assumeTrue
