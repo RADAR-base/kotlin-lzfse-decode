@@ -1,4 +1,5 @@
 # kotlin-lzfse-decode
+[ ![Download](https://api.bintray.com/packages/radar-base/org.radarbase/lzfse-decode/images/download.svg) ](https://bintray.com/radar-base/org.radarbase/lzfse-decode/_latestVersion)
 
 A Kotlin [LZFSE](https://github.com/lzfse/lzfse) capable decoder. This code base is a Kotlin adaptation of the [RagingMoose](https://github.com/horrorho/RagingMoose) Java LZFSE decoder, with some small optimizations applied. That codebase has been designed from the ground up as and barring constants/ tables and a few core routines, has little in the way of resemblance to the source material.
 
