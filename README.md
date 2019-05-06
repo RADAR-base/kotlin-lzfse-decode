@@ -30,22 +30,22 @@ try {
 ```
 
 ```Java
-    Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
-    
-    byte[] buffer = new byte[4096];
-    try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
-            ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        int nRead;
-        while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
-            baos.write(buffer, 0, numRead);
-        }
-        System.out.println(baos.toString("UTF-8"));
+Path path = Paths.get("my.lzfse.compressed.text.file"); // your LZFSE compressed text file here
 
-    } catch (LZFSEException ex) {
-        System.err.println("Bad LZFSE archive: " + path);
-    } catch (IOException ex) {
-        System.err.println("IOException: " + ex.toString());
+byte[] buffer = new byte[4096];
+try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+    int nRead;
+    while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
+        baos.write(buffer, 0, numRead);
     }
+    System.out.println(baos.toString("UTF-8"));
+
+} catch (LZFSEException ex) {
+    System.err.println("Bad LZFSE archive: " + path);
+} catch (IOException ex) {
+    System.err.println("IOException: " + ex.toString());
+}
 ```
 
 ## License
