@@ -1,50 +1,58 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.dokka.gradle.DokkaTask
-import com.jfrog.bintray.gradle.BintrayExtension
-import java.util.Date
-import java.net.URL
 
 plugins {
     `java-library`
-    kotlin("jvm") version "1.3.31"
+    kotlin("jvm")
     `maven-publish`
-    id("org.jetbrains.dokka") version "0.9.18"
-    id("com.jfrog.bintray") version "1.8.4"
+    signing
+    id("org.jetbrains.dokka")
+    id("com.github.ben-manes.versions") version "0.38.0" apply false
+    id("io.github.gradle-nexus.publish-plugin") version "1.0.0"
 }
 
 group = "org.radarbase"
-version = "0.1.0"
+version = "0.1.1"
 description = "LZFSE input stream"
 
 repositories {
-    jcenter()
+    mavenCentral()
+
+    // Temporary until Dokka is fully published on maven central.
+    // https://github.com/Kotlin/kotlinx.html/issues/81
+    maven(url = "https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
 }
 
 dependencies {
     api(kotlin("stdlib-jdk8"))
 
-    testImplementation("com.google.code.findbugs:jsr305:3.0.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.4.2")
+    val findbugsVersion: String by project
+    testImplementation("com.google.code.findbugs:jsr305:$findbugsVersion")
+
+    val junitVersion: String by project
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     testImplementation("org.hamcrest:hamcrest-core:1.3")
+
+    val dokkaVersion: String by project
+    configurations["dokkaHtmlPlugin"]("org.jetbrains.dokka:kotlin-as-java-plugin:$dokkaVersion")
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.apiVersion = "1.3"
+    kotlinOptions.apiVersion = "1.4"
     kotlinOptions.jvmTarget = "11"
     kotlinOptions.freeCompilerArgs = listOf(
-            "-Xno-call-assertions",
-            "-Xno-param-assertions"
+        "-Xno-call-assertions",
+        "-Xno-param-assertions",
     )
 }
 
-tasks.test {
+tasks.withType<Test> {
     useJUnitPlatform()
 }
 
 tasks.wrapper {
-    gradleVersion = "5.4.1"
+    gradleVersion = "7.0"
 }
 
 val githubRepoName = "RADAR-base/kotlin-lzfse-decode"
@@ -65,7 +73,7 @@ val jar by tasks.getting(Jar::class) {
     }
 }
 
-tasks.withType(Tar::class.java){
+tasks.withType<Tar> {
     compression = Compression.GZIP
     archiveExtension.set("tar.gz")
 }
@@ -76,17 +84,11 @@ val sourcesJar by tasks.creating(Jar::class) {
     archiveClassifier.set("sources")
 }
 
-val dokka by tasks.getting(DokkaTask::class) {
-    outputFormat = "html"
-    outputDirectory = "$buildDir/javadoc"
-    jdkVersion = 8
-}
-
-val dokkaJar by tasks.creating(Jar::class) {
-    group = JavaBasePlugin.DOCUMENTATION_GROUP
-    description = "Assembles Kotlin docs with Dokka"
+val dokkaJar by tasks.registering(Jar::class) {
+    from("$buildDir/dokka/javadoc")
     archiveClassifier.set("javadoc")
-    from(dokka)
+    val dokkaJavadoc by tasks
+    dependsOn(dokkaJavadoc)
 }
 
 artifacts.add("archives", dokkaJar)
@@ -134,27 +136,30 @@ publishing {
     }
 }
 
-bintray {
-    user = (if (project.hasProperty("bintrayUser")) project.property("bintrayUser") else System.getenv("BINTRAY_USER")).toString()
-    key = (if (project.hasProperty("bintrayApiKey")) project.property("bintrayApiKey") else System.getenv("BINTRAY_API_KEY")).toString()
-    override = false
-    setPublications("mavenJar")
-    pkg(delegateClosureOf<BintrayExtension.PackageConfig> {
-        repo = project.group.toString()
-        name = rootProject.name
-        userOrg = "radar-base"
-        desc = project.description
-        setLicenses("Apache-2.0")
-        websiteUrl = website
-        issueTrackerUrl = issueUrl
-        vcsUrl = githubUrl
-        githubRepo = githubRepoName
-        githubReleaseNotesFile = "README.md"
-        version(delegateClosureOf<BintrayExtension.VersionConfig> {
-            name = project.version.toString()
-            desc = project.description
-            vcsTag = System.getenv("TRAVIS_TAG")
-            released = Date().toString()
-        })
-    })
+signing {
+    useGpgCmd()
+    isRequired = true
+    sign(tasks["sourcesJar"], tasks["dokkaJar"])
+    sign(publishing.publications["mavenJar"])
+}
+
+tasks.withType<Sign> {
+    onlyIf { gradle.taskGraph.hasTask("${project.path}:publish") }
+}
+
+fun Project.propertyOrEnv(propertyName: String, envName: String): String? {
+    return if (hasProperty(propertyName)) {
+        property(propertyName)?.toString()
+    } else {
+        System.getenv(envName)
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username.set(propertyOrEnv("ossrh.user", "OSSRH_USER"))
+            password.set(propertyOrEnv("ossrh.password", "OSSRH_PASSWORD"))
+        }
+    }
 }
