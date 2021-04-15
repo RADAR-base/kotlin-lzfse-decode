@@ -82,6 +82,8 @@ tasks.withType<Tar> {
 val sourcesJar by tasks.creating(Jar::class) {
     from(sourceSets.main.get().allSource)
     archiveClassifier.set("sources")
+    val classes by tasks
+    dependsOn(classes)
 }
 
 val dokkaJar by tasks.registering(Jar::class) {
@@ -91,9 +93,9 @@ val dokkaJar by tasks.registering(Jar::class) {
     dependsOn(dokkaJavadoc)
 }
 
-artifacts.add("archives", dokkaJar)
-artifacts.add("archives", sourcesJar)
-
+val assemble by tasks
+assemble.dependsOn(sourcesJar)
+assemble.dependsOn(dokkaJar)
 
 publishing {
     publications {
@@ -102,6 +104,8 @@ publishing {
             artifact(sourcesJar)
             artifact(dokkaJar)
             pom {
+                name.set(project.name)
+                description.set(project.description)
                 url.set(githubUrl)
 
                 licenses {
@@ -144,7 +148,7 @@ signing {
 }
 
 tasks.withType<Sign> {
-    onlyIf { gradle.taskGraph.hasTask("${project.path}:publish") }
+    onlyIf { gradle.taskGraph.hasTask(project.tasks["publish"]) }
 }
 
 fun Project.propertyOrEnv(propertyName: String, envName: String): String? {
