@@ -35,9 +35,7 @@ internal class TANS<T : TANS.Entry>(internal val table: Array<T>) {
     internal class State {
         var value: Int = 0
 
-        override fun toString(): String {
-            return "State{value=$value}"
-        }
+        override fun toString(): String = "State{value=$value}"
     }
 
     fun transition(state: IntArray, `in`: BitInStream, literals: ByteArray, literalOff: Int) {
@@ -60,7 +58,7 @@ internal class TANS<T : TANS.Entry>(internal val table: Array<T>) {
     inline fun foreach(consumer: (T) -> Unit) = table.forEach(consumer)
 
     @Throws(LZFSEException::class)
-    fun init(weights: ShortArray): TANS<T> {
+    fun init(weights: ShortArray) {
         if (weights.size > 256) {
             throw LZFSEException()
         }
@@ -69,7 +67,6 @@ internal class TANS<T : TANS.Entry>(internal val table: Array<T>) {
             weights.forEachIndexed { i, weight ->
                 t = fill(i.toByte(), weight.toInt(), t)
             }
-            return this
         } catch (ex: ArrayIndexOutOfBoundsException) {
             throw LZFSEException(ex)
         }

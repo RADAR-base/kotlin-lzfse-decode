@@ -94,19 +94,19 @@ class LZFSEInputStream(private val ch: ReadableByteChannel) : InputStream() {
         decoder = when (val magic = magic()) {
             LZFSEConstants.COMPRESSEDV2_BLOCK_MAGIC -> {
                 lzfseBlockHeader.loadV2(ch)
-                lzfseBlockDecoder.init(lzfseBlockHeader, ch)
+                lzfseBlockDecoder.apply { init(lzfseBlockHeader, ch) }
             }
             LZFSEConstants.COMPRESSEDV1_BLOCK_MAGIC -> {
                 lzfseBlockHeader.loadV1(ch)
-                lzfseBlockDecoder.init(lzfseBlockHeader, ch)
+                lzfseBlockDecoder.apply { init(lzfseBlockHeader, ch) }
             }
             LZFSEConstants.COMPRESSEDLZVN_BLOCK_MAGIC -> {
                 lzvnBlockHeader.load(ch)
-                lzvnBlockDecoder.init(lzvnBlockHeader, ch)
+                lzvnBlockDecoder.apply { init(lzvnBlockHeader, ch) }
             }
             LZFSEConstants.UNCOMPRESSED_BLOCK_MAGIC -> {
                 rawBlockHeader.load(ch)
-                rawBlockDecoder.init(rawBlockHeader, ch)
+                rawBlockDecoder.apply { init(rawBlockHeader, ch) }
             }
             LZFSEConstants.ENDOFSTREAM_BLOCK_MAGIC -> {
                 eos = true

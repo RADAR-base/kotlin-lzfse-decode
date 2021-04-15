@@ -28,10 +28,9 @@ internal class RawBlockDecoder : BlockDecoder {
     private var bb: ByteBuffer = BufferUtil.withCapacity(4096)
 
     @Throws(IOException::class)
-    fun init(header: RawBlockHeader, ch: ReadableByteChannel): RawBlockDecoder {
+    fun init(header: RawBlockHeader, ch: ReadableByteChannel) {
         bb = bb.withCapacity(header.nRawBytes)
         ch.readFully(bb).rewind()
-        return this
     }
 
     @Throws(IOException::class)
