@@ -64,15 +64,13 @@ internal class LZVNBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private var neos = true
 
     @Throws(IOException::class)
-    fun init(header: LZVNBlockHeader, ch: ReadableByteChannel): LZVNBlockDecoder {
+    fun init(header: LZVNBlockHeader, ch: ReadableByteChannel) {
         bb = bb.withCapacity(header.nPayloadBytes)
         ch.readFully(bb).rewind()
 
         l = 0
         m = 0
         d = -1
-
-        return this
     }
 
     @Throws(IOException::class)

@@ -37,19 +37,19 @@ internal class LZFSEBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
     private var rawBytes: Int = 0
     private var symbols: Int = 0
 
-    fun init(bh: LZFSEBlockHeader, ch: ReadableByteChannel): LZFSEBlockDecoder {
-        lValueDecoder.load(bh.lFreq, L_EXTRA_BITS, L_BASE_VALUE)
-                .state(bh.lState)
-        mValueDecoder.load(bh.mFreq, M_EXTRA_BITS, M_BASE_VALUE)
-                .state(bh.mState)
-        dValueDecoder.load(bh.dFreq, D_EXTRA_BITS, D_BASE_VALUE)
-                .state(bh.dState)
-        literalDecoder.load(bh.literalFreq).apply {
+    fun init(bh: LZFSEBlockHeader, ch: ReadableByteChannel) {
+        lValueDecoder.load(bh.lFreq, L_EXTRA_BITS, L_BASE_VALUE, bh.lState)
+        mValueDecoder.load(bh.mFreq, M_EXTRA_BITS, M_BASE_VALUE, bh.mState)
+        dValueDecoder.load(bh.dFreq, D_EXTRA_BITS, D_BASE_VALUE, bh.dState)
+
+        literalDecoder.apply {
+            load(bh.literalFreq)
             state = bh.literalState
             nLiteralPayloadBytes = bh.nLiteralPayloadBytes
             nLiterals = bh.nLiterals
             literalBits = bh.literalBits
-        }.decodeInto(ch, literals)
+            decodeInto(ch, literals)
+        }
 
         bb = bb.withCapacity(bh.nLmdPayloadBytes, 32)
         ch.readFully(bb)
@@ -59,8 +59,6 @@ internal class LZFSEBlockDecoder(mb: MatchBuffer) : LMDBlockDecoder(mb) {
         symbols = bh.nMatches
 
         pos = 0
-
-        return this
     }
 
     override fun readLiteral(): Byte {

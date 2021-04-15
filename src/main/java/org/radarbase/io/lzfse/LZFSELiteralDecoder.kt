@@ -41,13 +41,12 @@ internal class LZFSELiteralDecoder @Throws(LZFSEException::class)
     private val bitInStream = BitInStream()
 
     @Throws(LZFSEException::class)
-    fun load(weights: ShortArray): LZFSELiteralDecoder {
+    fun load(weights: ShortArray) {
         tans.init(weights)
-        return this
     }
 
     @Throws(IOException::class, LZFSEException::class)
-    fun decodeInto(ch: ReadableByteChannel, literals: ByteArray): LZFSELiteralDecoder {
+    fun decodeInto(ch: ReadableByteChannel, literals: ByteArray) {
         bb = bb.withCapacity(nLiteralPayloadBytes, 8)
         ch.readFully(bb)
         bitInStream.init(bb, literalBits)
@@ -59,7 +58,6 @@ internal class LZFSELiteralDecoder @Throws(LZFSEException::class)
             tans.transition(state, bitInStream, literals, i)
             i += 4
         }
-        return this
     }
 
     override fun toString(): String {
