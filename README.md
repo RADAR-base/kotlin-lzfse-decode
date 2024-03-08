@@ -42,7 +42,7 @@ try (LZFSEInputStream is = new LZFSEInputStream(Files.newByteChannel(path));
         ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
     int nRead;
     while ((nRead = is.read(buffer, 0, buffer.length)) != -1) {
-        baos.write(buffer, 0, numRead);
+        baos.write(buffer, 0, nRead);
     }
     System.out.println(baos.toString("UTF-8"));
 
