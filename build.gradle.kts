@@ -5,7 +5,7 @@ plugins {
     kotlin("jvm")
     `maven-publish`
     signing
-    id("org.jetbrains.dokka")
+    id("org.jetbrains.dokka") version "1.9.20"
     id("com.github.ben-manes.versions") version "0.38.0" apply false
     id("io.github.gradle-nexus.publish-plugin") version "1.0.0"
 }
@@ -32,7 +32,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    testImplementation("org.hamcrest:hamcrest-core:1.3")
+    testImplementation("org.hamcrest:hamcrest-core:2.2")
 
     val dokkaVersion: String by project
     configurations["dokkaHtmlPlugin"]("org.jetbrains.dokka:kotlin-as-java-plugin:$dokkaVersion")
@@ -40,7 +40,7 @@ dependencies {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.apiVersion = "1.4"
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "17"
     kotlinOptions.freeCompilerArgs = listOf(
         "-Xno-call-assertions",
         "-Xno-param-assertions",
@@ -52,7 +52,7 @@ tasks.withType<Test> {
 }
 
 tasks.wrapper {
-    gradleVersion = "7.0"
+    gradleVersion = "8.4"
 }
 
 val githubRepoName = "RADAR-base/kotlin-lzfse-decode"
